@@ -19,6 +19,7 @@ namespace Dregfall
         float verticalVelocity;
 
         public float Speed01 { get; private set; }
+        public float CurrentPlanarSpeed => planarVelocity.magnitude;
         public bool IsSprinting { get; private set; }
 
         void Awake()
