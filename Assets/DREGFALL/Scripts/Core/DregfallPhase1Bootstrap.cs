@@ -24,15 +24,43 @@ namespace Dregfall
             ground.name = "DREGFALL_TestGround";
             ground.transform.localScale = new Vector3(8f, 1f, 8f);
 
-            GameObject player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            player.name = "DREGFALL_Survivor";
-            player.transform.position = new Vector3(0, 1.05f, 0);
-            Object.Destroy(player.GetComponent<CapsuleCollider>());
+            GameObject player = new GameObject("DREGFALL_Survivor");
+            player.transform.position = new Vector3(0f, 0.05f, 0f);
+
             CharacterController cc = player.AddComponent<CharacterController>();
-            cc.height = 2f; cc.radius = .45f; cc.center = Vector3.zero;
+            cc.height = 2f;
+            cc.radius = 0.42f;
+            cc.center = new Vector3(0f, 1f, 0f);
+
             player.AddComponent<DregfallPlayerController>();
             player.AddComponent<DregfallInteractionSystem>();
             player.AddComponent<DregfallHexTracker>();
+
+            GameObject survivorPrefab = Resources.Load<GameObject>("DREGFALL_SurvivorVisual");
+            if (survivorPrefab != null)
+            {
+                GameObject visual = Object.Instantiate(survivorPrefab, player.transform);
+                visual.name = "Survivor_Visual";
+                visual.transform.localPosition = Vector3.zero;
+                visual.transform.localRotation = Quaternion.identity;
+
+                Animator animator = visual.GetComponentInChildren<Animator>();
+                if (animator != null)
+                {
+                    animator.applyRootMotion = false;
+                    DregfallAnimationDriver driver = player.AddComponent<DregfallAnimationDriver>();
+                    driver.SetAnimator(animator);
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[DREGFALL] Survivor visual has not been generated yet. Open the project once in Unity and let the DREGFALL asset setup finish.");
+                GameObject fallback = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                fallback.name = "Temporary_Survivor_Visual";
+                fallback.transform.SetParent(player.transform, false);
+                fallback.transform.localPosition = new Vector3(0f, 1f, 0f);
+                Object.Destroy(fallback.GetComponent<CapsuleCollider>());
+            }
 
             DregfallCameraFollow follow = cam.GetComponent<DregfallCameraFollow>();
             if (follow == null) follow = cam.gameObject.AddComponent<DregfallCameraFollow>();
@@ -44,7 +72,7 @@ namespace Dregfall
             CreateRock(new Vector3(-5, .65f, -5));
             CreateRock(new Vector3(8, .65f, 10));
 
-            Debug.Log("[DREGFALL] Phase 1 bootstrap ready. WASD move, Shift sprint, right-click a tree.");
+            Debug.Log("[DREGFALL] Phase 1 survivor ready. WASD move, Shift sprint, right-click a tree.");
         }
 
         static void CreateTree(Vector3 position)
