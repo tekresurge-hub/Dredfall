@@ -198,8 +198,8 @@ namespace Dregfall
                 float worldX = coord.x * chunkSize + 1f + (float)rng.NextDouble() * (chunkSize - 2f);
                 float worldZ = coord.y * chunkSize + 1f + (float)rng.NextDouble() * (chunkSize - 2f);
                 if (category != 3 && new Vector2(worldX, worldZ).sqrMagnitude < spawnClearingRadius * spawnClearingRadius) continue;
-                // Waterways own their banks. Keep trees, rocks and physical grass out of creek/pond footprints.
-                if (GetWaterMask(worldX, worldZ) > (category == 1 ? 0.42f : 0.25f)) continue;
+                // Phase 2D water rendering is temporarily disabled. Do not let its provisional
+                // water mask erase the certified wilderness population while waterways are rebuilt.
 
                 float broad = GetWildernessDensity(new Vector3(worldX, 0f, worldZ));
                 float forest = Mathf.PerlinNoise(worldX * forestPatchScale + sx * 1.71f,
@@ -424,9 +424,9 @@ namespace Dregfall
             localAmplitude *= Mathf.Lerp(0.75f, 1.25f, roughness);
 
             float baseHeight = regionalShape + local * localAmplitude + detail * terrainHeight * 0.18f;
-            float water = GetWaterMask(x, z);
-            // Shallow creek beds/pond depressions: enough relief to read as water without giant rivers.
-            return baseHeight - water * creekDepth;
+            // Phase 2D waterways are temporarily isolated from terrain generation.
+            // Preserve the working Phase 2B/2C terrain until the localized stream system is rebuilt.
+            return baseHeight;
         }
 
         public float GetSettlementSuitability(Vector3 worldPosition)
