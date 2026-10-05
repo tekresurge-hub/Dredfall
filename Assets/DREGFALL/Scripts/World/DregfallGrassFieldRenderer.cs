@@ -61,7 +61,8 @@ namespace Dregfall
             var rng = new System.Random(seed);
             GrassChunk data = new GrassChunk(variants.Count);
 
-            int carpetCount = Mathf.RoundToInt(grassPerChunk * 1.75f);\n            for (int i = 0; i < carpetCount; i++)
+            int carpetCount = Mathf.RoundToInt(grassPerChunk * 2.15f);
+            for (int i = 0; i < carpetCount; i++)
             {
                 float x = coord.x * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
                 float z = coord.y * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
