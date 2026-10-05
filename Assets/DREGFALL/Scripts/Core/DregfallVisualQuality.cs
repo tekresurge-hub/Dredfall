@@ -14,8 +14,8 @@ namespace Dregfall
             QualitySettings.lodBias = 2.15f;
             QualitySettings.maximumLODLevel = 0;
             QualitySettings.shadowDistance = 72f;
-            QualitySettings.shadowResolution = ShadowResolution.Medium;
-            QualitySettings.shadows = ShadowQuality.All;
+            QualitySettings.shadowResolution = UnityEngine.ShadowResolution.Medium;
+            QualitySettings.shadows = UnityEngine.ShadowQuality.All;
             QualitySettings.softParticles = true;
             QualitySettings.realtimeReflectionProbes = false;
 
