@@ -25,11 +25,11 @@ namespace Dregfall
         [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
 
         [Header("Phase 2C Wilderness")]
-        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 85;
-        [SerializeField, Range(900, 5200)] int denseGrassPerChunk = 4200;
-        [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 210;
-        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 390;
-        [SerializeField, Range(0, 40)] int maxRocksPerChunk = 18;
+        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 60;
+        [SerializeField, Range(900, 5200)] int denseGrassPerChunk = 3000;
+        [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 70;
+        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 180;
+        [SerializeField, Range(0, 40)] int maxRocksPerChunk = 12;
         [SerializeField] float maxVegetationSlope = 0.72f;
         [SerializeField] float spawnClearingRadius = 11f;
         [SerializeField] float forestPatchScale = 0.0045f;
