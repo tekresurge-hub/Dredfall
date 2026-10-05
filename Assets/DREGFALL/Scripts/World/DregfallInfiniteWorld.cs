@@ -481,8 +481,9 @@ namespace Dregfall
                 if (i < segments)
                 {
                     int v = i * 2;
-                    triangles.Add(v); triangles.Add(v + 2); triangles.Add(v + 1);
-                    triangles.Add(v + 1); triangles.Add(v + 2); triangles.Add(v + 3);
+                    // Clockwise from above so the stream's front face points upward.
+                    triangles.Add(v); triangles.Add(v + 1); triangles.Add(v + 2);
+                    triangles.Add(v + 1); triangles.Add(v + 3); triangles.Add(v + 2);
                 }
             }
 
