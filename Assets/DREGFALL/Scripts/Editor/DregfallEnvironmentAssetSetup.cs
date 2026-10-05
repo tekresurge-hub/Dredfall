@@ -14,6 +14,9 @@ namespace Dregfall.Editor
         const string GroundMaterialPath = ResourcesFolder + "/DREGFALL_GroundMaterial.mat";
         const string GrassAlbedoPath = "Assets/PBR_Grass_Textures/Textures/grass_03.png";
         const string GrassNormalPath = "Assets/PBR_Grass_Textures/Textures/grass_03_normal.png";
+        const string MudAlbedoPath = "Assets/PBR Texture Pack Vol 1/Textures/Mud/Mud_baseColor.png";
+        const string ForestAlbedoPath = "Assets/PBR Texture Pack Vol 1/Textures/Swamp Ground/Swamp Ground_baseColor.png";
+        const string RockAlbedoPath = "Assets/Hill Rock Mountain Terrain/Materials/Terrain/mountain_terrain_02/mountain_2_AlbedoTransparency.png";
 
         static DregfallEnvironmentAssetSetup()
         {
@@ -80,51 +83,46 @@ namespace Dregfall.Editor
 
         static void EnsureGroundMaterial()
         {
-            Shader urpLit = Shader.Find("Universal Render Pipeline/Lit");
-            if (urpLit == null)
+            Shader groundShader = Shader.Find("DREGFALL/ProceduralGround");
+            if (groundShader == null)
             {
-                Debug.LogError("[DREGFALL] Cannot build ground material: URP/Lit shader was not found.");
+                Debug.LogError("[DREGFALL] Cannot build ground material: DREGFALL/ProceduralGround shader was not found.");
                 return;
             }
 
-            Texture2D albedo = AssetDatabase.LoadAssetAtPath<Texture2D>(GrassAlbedoPath);
-            Texture2D normal = AssetDatabase.LoadAssetAtPath<Texture2D>(GrassNormalPath);
-            if (albedo == null)
+            Texture2D grass = AssetDatabase.LoadAssetAtPath<Texture2D>(GrassAlbedoPath);
+            Texture2D mud = AssetDatabase.LoadAssetAtPath<Texture2D>(MudAlbedoPath);
+            Texture2D forest = AssetDatabase.LoadAssetAtPath<Texture2D>(ForestAlbedoPath);
+            Texture2D rock = AssetDatabase.LoadAssetAtPath<Texture2D>(RockAlbedoPath);
+            if (grass == null || mud == null || forest == null || rock == null)
             {
-                Debug.LogError("[DREGFALL] Ground texture missing: " + GrassAlbedoPath);
+                Debug.LogError("[DREGFALL] Ground setup is missing one or more source textures.");
                 return;
             }
 
             Material ground = AssetDatabase.LoadAssetAtPath<Material>(GroundMaterialPath);
             if (ground == null)
             {
-                ground = new Material(urpLit) { name = "DREGFALL_GroundMaterial" };
+                ground = new Material(groundShader) { name = "DREGFALL_GroundMaterial" };
                 AssetDatabase.CreateAsset(ground, GroundMaterialPath);
             }
-            else if (ground.shader != urpLit)
+            else
             {
-                ground.shader = urpLit;
+                ground.shader = groundShader;
             }
 
-            // The streamed mesh UVs are based on absolute world coordinates. Using the
-            // same material/tiling on every chunk therefore keeps the ground continuous
-            // instead of restarting the texture at chunk edges.
-            ground.SetTexture("_BaseMap", albedo);
-            ground.SetTextureScale("_BaseMap", new Vector2(10.6667f, 10.6667f)); // ~6m texture repeat.
-            ground.SetColor("_BaseColor", new Color(0.58f, 0.62f, 0.52f, 1f));
-            ground.SetFloat("_Smoothness", 0.06f);
-            ground.SetFloat("_Metallic", 0f);
-
-            if (normal != null)
-            {
-                ground.SetTexture("_BumpMap", normal);
-                ground.SetTextureScale("_BumpMap", new Vector2(10.6667f, 10.6667f));
-                ground.SetFloat("_BumpScale", 0.72f);
-                ground.EnableKeyword("_NORMALMAP");
-            }
+            ground.SetTexture("_GrassTex", grass);
+            ground.SetTexture("_MudTex", mud);
+            ground.SetTexture("_SwampTex", forest);
+            ground.SetTexture("_RockTex", rock);
+            ground.SetFloat("_Tiling", 0.18f);
+            ground.SetFloat("_VariationScale", 0.012f);
+            ground.SetFloat("_RockSlopeStart", 0.30f);
+            ground.SetFloat("_RockSlopeEnd", 0.64f);
+            ground.SetFloat("_Brightness", 1.02f);
 
             EditorUtility.SetDirty(ground);
-            Debug.Log("[DREGFALL] Realistic streamed ground material ready (grass_03, world-continuous tiling).");
+            Debug.Log("[DREGFALL] Procedural ground ready: grass + soil + forest floor + slope rock blending.");
         }
 
         static GameObject[] LoadPrefabs(string[] paths)
