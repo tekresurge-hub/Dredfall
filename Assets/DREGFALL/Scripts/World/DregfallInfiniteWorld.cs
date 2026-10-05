@@ -370,18 +370,24 @@ namespace Dregfall
             float sx = HashSeed(worldSeed, 211) * 0.001f;
             float sz = HashSeed(worldSeed, 307) * 0.001f;
 
-            // Rare meandering creek corridors. The warp prevents straight/artificial channels.
-            float warp = (Mathf.PerlinNoise(x * 0.0017f + sx, z * 0.0017f + sz) - 0.5f) * 95f;
-            float wave = Mathf.Abs(Mathf.Sin((x + warp + worldSeed * 0.013f) * 0.0125f));
-            float creek = 1f - Mathf.SmoothStep(creekHalfWidth * 0.010f, creekHalfWidth * 0.038f, wave);
-            float regionGate = Mathf.PerlinNoise(x * 0.00055f + sx * 1.7f, z * 0.00055f + sz * 1.7f);
-            creek *= Mathf.SmoothStep(0.48f, 0.62f, regionGate);
+            // Sparse creek bands: compare Z to a smoothly warped centerline repeated only every ~420m.
+            // This produces narrow continuous streams instead of flooding whole chunks.
+            float bandPeriod = 420f;
+            float meander = (Mathf.PerlinNoise(x * 0.0022f + sx, z * 0.00045f + sz) - 0.5f) * 105f;
+            float band = Mathf.Repeat(z + meander + worldSeed * 0.071f, bandPeriod);
+            float distanceToCenter = Mathf.Min(band, bandPeriod - band);
+            float width = Mathf.Lerp(1.4f, 3.0f,
+                Mathf.PerlinNoise(x * 0.0014f + sx * 2.1f, z * 0.0014f + sz * 2.1f));
+            float creek = 1f - Mathf.SmoothStep(width, width + 2.2f, distanceToCenter);
 
-            // Small ponds/wet pockets are deliberately rare and broad enough to read naturally.
-            float pondNoise = Mathf.PerlinNoise(x * 0.0022f + sx * 3.1f, z * 0.0022f + sz * 3.1f);
-            float pondThreshold = Mathf.Lerp(0.84f, 0.76f, pondFrequency);
-            float pond = Mathf.SmoothStep(pondThreshold, pondThreshold + 0.055f, pondNoise);
-            return Mathf.Max(creek, pond);
+            // Gate some creek stretches out so waterways are uncommon rather than everywhere.
+            float gate = Mathf.PerlinNoise(x * 0.00042f + sx * 1.7f, z * 0.00042f + sz * 1.7f);
+            creek *= Mathf.SmoothStep(0.46f, 0.57f, gate);
+
+            // Rare compact ponds.
+            float pondNoise = Mathf.PerlinNoise(x * 0.0032f + sx * 3.1f, z * 0.0032f + sz * 3.1f);
+            float pond = Mathf.SmoothStep(0.885f, 0.925f, pondNoise);
+            return Mathf.Clamp01(Mathf.Max(creek, pond));
         }
 
         public bool IsWater(float x, float z) => GetWaterMask(x, z) > 0.52f;
@@ -441,8 +447,7 @@ namespace Dregfall
 
         void BuildWaterSurface(Vector2Int coord, Transform parent)
         {
-            // Lightweight water patches share the terrain sampling grid, so they stream with each chunk.
-            int resolution = Mathf.Max(9, verticesPerSide);
+            int resolution = Mathf.Max(17, verticesPerSide);
             float step = (float)chunkSize / (resolution - 1);
             var vertices = new List<Vector3>();
             var uvs = new List<Vector2>();
@@ -451,13 +456,24 @@ namespace Dregfall
             for (int z = 0; z < resolution - 1; z++)
             for (int x = 0; x < resolution - 1; x++)
             {
-                float wx = coord.x * chunkSize + (x + 0.5f) * step;
-                float wz = coord.y * chunkSize + (z + 0.5f) * step;
-                if (GetWaterMask(wx, wz) < 0.52f) continue;
-
                 float x0 = x * step, x1 = (x + 1) * step;
                 float z0 = z * step, z1 = (z + 1) * step;
-                float surface = SampleGroundHeight(wx, wz) + creekDepth * 0.72f;
+                float wx = coord.x * chunkSize + (x0 + x1) * 0.5f;
+                float wz = coord.y * chunkSize + (z0 + z1) * 0.5f;
+
+                float centerMask = GetWaterMask(wx, wz);
+                if (centerMask < 0.60f) continue;
+
+                float c0 = GetWaterMask(coord.x * chunkSize + x0, coord.y * chunkSize + z0);
+                float c1 = GetWaterMask(coord.x * chunkSize + x1, coord.y * chunkSize + z0);
+                float c2 = GetWaterMask(coord.x * chunkSize + x0, coord.y * chunkSize + z1);
+                float c3 = GetWaterMask(coord.x * chunkSize + x1, coord.y * chunkSize + z1);
+                if (Mathf.Max(Mathf.Max(c0, c1), Mathf.Max(c2, c3)) < 0.38f) continue;
+
+                // Keep the water just above its locally carved bed, never above surrounding terrain.
+                float bed = SampleGroundHeight(wx, wz);
+                float surface = bed + Mathf.Lerp(0.18f, creekDepth * 0.68f, centerMask);
+
                 int i = vertices.Count;
                 vertices.Add(new Vector3(x0, surface, z0));
                 vertices.Add(new Vector3(x1, surface, z0));
@@ -470,11 +486,15 @@ namespace Dregfall
             }
 
             if (vertices.Count == 0) return;
+
             GameObject water = new GameObject("Waterway");
             water.transform.SetParent(parent, false);
             Mesh mesh = new Mesh { name = $"DREGFALL_Water_{coord.x}_{coord.y}" };
-            mesh.SetVertices(vertices); mesh.SetUVs(0, uvs); mesh.SetTriangles(triangles, 0);
-            mesh.RecalculateNormals(); mesh.RecalculateBounds();
+            mesh.SetVertices(vertices);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
             water.AddComponent<MeshFilter>().sharedMesh = mesh;
             water.AddComponent<MeshRenderer>().sharedMaterial = GetWaterMaterial();
         }
