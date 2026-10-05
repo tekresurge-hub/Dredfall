@@ -25,20 +25,20 @@ namespace Dregfall
         [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
 
         [Header("Phase 2C Wilderness")]
-        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 38;
-        [SerializeField, Range(500, 2200)] int denseGrassPerChunk = 1500;
-        [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 54;
-        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 92;
-        [SerializeField, Range(0, 40)] int maxRocksPerChunk = 8;
+        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 24;
+        [SerializeField, Range(350, 2200)] int denseGrassPerChunk = 900;
+        [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 18;
+        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 52;
+        [SerializeField, Range(0, 40)] int maxRocksPerChunk = 5;
         [SerializeField] float maxVegetationSlope = 0.72f;
         [SerializeField] float spawnClearingRadius = 11f;
         [SerializeField] float forestPatchScale = 0.0045f;
         [SerializeField] float clearingScale = 0.009f;
 
         [Header("Phase 2D Waterways")]
-        [SerializeField, Range(0.8f, 5f)] float creekDepth = 1.8f;
-        [SerializeField, Range(0.5f, 4f)] float creekHalfWidth = 1.8f;
-        [SerializeField, Range(0f, 0.5f)] float pondFrequency = 0.12f;
+        [SerializeField, Range(0.2f, 2f)] float creekDepth = 0.45f;
+        [SerializeField, Range(0.2f, 2f)] float creekHalfWidth = 0.65f;
+        [SerializeField, Range(0f, 0.15f)] float pondFrequency = 0.035f;
 
         DregfallEnvironmentCatalog environmentCatalog;
         DregfallGrassFieldRenderer grassField;
@@ -449,47 +449,55 @@ namespace Dregfall
 
         void BuildWaterSurface(Vector2Int coord, Transform parent)
         {
-            // Phase 2D certification pass: force one obvious creek through the spawn area.
-            // This proves the water mesh/material/render path before procedural distribution returns.
-            const int segments = 32;
-            float xMin = coord.x * chunkSize;
-            float zMin = coord.y * chunkSize;
+            // Scarce survival water: most chunks intentionally contain no surface water.
+            // A deterministic regional gate means players can travel a long way while staying dry.
+            int waterSeed = HashSeed(worldSeed, coord.x * 92821 ^ coord.y * 68917 ^ 0x2D71);
+            var rng = new System.Random(waterSeed);
+            float regionX = (coord.x * chunkSize + chunkSize * 0.5f) * 0.00085f + 91.3f;
+            float regionZ = (coord.y * chunkSize + chunkSize * 0.5f) * 0.00085f + 47.9f;
+            float wetRegion = Mathf.PerlinNoise(regionX, regionZ);
 
-            // Test creek crosses only the row of chunks containing world Z = 18m.
-            // It winds gently and stays close enough to spawn to be found immediately.
-            float testCenter = 18f;
-            float margin = 12f;
-            if (testCenter < zMin - margin || testCenter > zMin + chunkSize + margin) return;
+            // Only unusually wet regions can create water, and even there only a few chunks do.
+            if (wetRegion < 0.60f || rng.NextDouble() > pondFrequency) return;
 
-            var vertices = new List<Vector3>((segments + 1) * 2);
-            var uvs = new List<Vector2>((segments + 1) * 2);
-            var triangles = new List<int>(segments * 6);
+            float worldX = coord.x * chunkSize + Mathf.Lerp(10f, chunkSize - 10f, (float)rng.NextDouble());
+            float worldZ = coord.y * chunkSize + Mathf.Lerp(10f, chunkSize - 10f, (float)rng.NextDouble());
 
-            for (int i = 0; i <= segments; i++)
+            // Tiny muddy puddle / seep. This is deliberately not an easy, river-sized water supply.
+            float radiusX = Mathf.Lerp(0.85f, 1.8f, (float)rng.NextDouble());
+            float radiusZ = Mathf.Lerp(0.65f, 1.35f, (float)rng.NextDouble());
+            const int ringSegments = 18;
+            var vertices = new List<Vector3>(ringSegments + 1);
+            var uvs = new List<Vector2>(ringSegments + 1);
+            var triangles = new List<int>(ringSegments * 3);
+
+            float centerY = SampleGroundHeight(worldX, worldZ) + 0.035f;
+            vertices.Add(new Vector3(worldX - coord.x * chunkSize, centerY, worldZ - coord.y * chunkSize));
+            uvs.Add(new Vector2(0.5f, 0.5f));
+
+            for (int i = 0; i < ringSegments; i++)
             {
-                float t = i / (float)segments;
-                float worldX = xMin + chunkSize * t;
-                float worldZ = testCenter + Mathf.Sin(worldX * 0.035f) * 5.5f;
-                float width = 2.2f + Mathf.PerlinNoise(worldX * 0.01f + 12.7f, 4.3f) * 1.2f;
-
-                float centerY = SampleGroundHeight(worldX, worldZ) + 0.22f;
-                vertices.Add(new Vector3(worldX - xMin, centerY, worldZ - width - zMin));
-                vertices.Add(new Vector3(worldX - xMin, centerY, worldZ + width - zMin));
-                uvs.Add(new Vector2(t * 8f, 0f));
-                uvs.Add(new Vector2(t * 8f, 1f));
-
-                if (i < segments)
-                {
-                    int v = i * 2;
-                    // Clockwise from above so the stream's front face points upward.
-                    triangles.Add(v); triangles.Add(v + 1); triangles.Add(v + 2);
-                    triangles.Add(v + 1); triangles.Add(v + 3); triangles.Add(v + 2);
-                }
+                float angle = i / (float)ringSegments * Mathf.PI * 2f;
+                float irregular = Mathf.Lerp(0.82f, 1.12f,
+                    Mathf.PerlinNoise(worldX * 0.11f + i * 0.37f, worldZ * 0.11f + i * 0.19f));
+                float px = worldX + Mathf.Cos(angle) * radiusX * irregular;
+                float pz = worldZ + Mathf.Sin(angle) * radiusZ * irregular;
+                float py = SampleGroundHeight(px, pz) + 0.045f;
+                vertices.Add(new Vector3(px - coord.x * chunkSize, py, pz - coord.y * chunkSize));
+                uvs.Add(new Vector2(0.5f + Mathf.Cos(angle) * 0.5f, 0.5f + Mathf.Sin(angle) * 0.5f));
             }
 
-            GameObject water = new GameObject("DREGFALL_TEST_SMALL_STREAM");
+            for (int i = 0; i < ringSegments; i++)
+            {
+                int a = i + 1;
+                int b = ((i + 1) % ringSegments) + 1;
+                // Upward-facing winding for the elevated camera.
+                triangles.Add(0); triangles.Add(a); triangles.Add(b);
+            }
+
+            GameObject water = new GameObject("DREGFALL_RareWater_Puddle");
             water.transform.SetParent(parent, false);
-            Mesh mesh = new Mesh { name = $"DREGFALL_TestStream_{coord.x}_{coord.y}" };
+            Mesh mesh = new Mesh { name = $"DREGFALL_RarePuddle_{coord.x}_{coord.y}" };
             mesh.SetVertices(vertices);
             mesh.SetUVs(0, uvs);
             mesh.SetTriangles(triangles, 0);
@@ -499,7 +507,7 @@ namespace Dregfall
             var mr = water.AddComponent<MeshRenderer>();
             mr.sharedMaterial = GetWaterMaterial();
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            mr.receiveShadows = false;
+            mr.receiveShadows = true;
         }
 
         static Material waterMaterial;
@@ -509,8 +517,8 @@ namespace Dregfall
             Shader shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader == null) shader = Shader.Find("Standard");
             waterMaterial = new Material(shader) { name = "DREGFALL_Water" };
-            waterMaterial.color = new Color(0.04f, 0.30f, 0.42f, 1f);
-            waterMaterial.SetFloat("_Smoothness", 0.82f);
+            waterMaterial.color = new Color(0.055f, 0.105f, 0.09f, 1f);
+            waterMaterial.SetFloat("_Smoothness", 0.94f);
             waterMaterial.SetFloat("_Metallic", 0f);
             return waterMaterial;
         }
