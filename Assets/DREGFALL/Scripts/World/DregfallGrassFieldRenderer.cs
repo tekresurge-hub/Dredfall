@@ -144,7 +144,8 @@ namespace Dregfall
         {
             if (variants.Count == 0 || player == null) return;
 
-            // Dense blades are only worth drawing close to the survivor. Distant terrain relies on its ground material.\n            float renderDistance = world.ChunkSize * 0.82f;
+            // Dense blades are only worth drawing close to the survivor. Distant terrain relies on its ground material.
+            float renderDistance = world.ChunkSize * 0.82f;
             float renderDistanceSqr = renderDistance * renderDistance;
             Vector3 playerPos = player.position;
 
