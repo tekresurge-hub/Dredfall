@@ -59,7 +59,7 @@ namespace Dregfall
         {
             world = owner;
             player = target;
-            grassPerChunk = Mathf.Clamp(density, 900, 5200);
+            grassPerChunk = Mathf.Clamp(density, 500, 2200);
             variants.Clear();
 
             if (grassPrefabs == null) return;
@@ -94,7 +94,7 @@ namespace Dregfall
             var rng = new System.Random(seed);
             GrassChunk data = new GrassChunk(variants.Count);
 
-            int carpetCount = Mathf.RoundToInt(grassPerChunk * 1.65f);
+            int carpetCount = Mathf.RoundToInt(grassPerChunk * 0.72f);
             for (int i = 0; i < carpetCount; i++)
             {
                 float x = coord.x * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
@@ -105,8 +105,9 @@ namespace Dregfall
                 float trail = Mathf.PerlinNoise(x * 0.012f + 317.2f, z * 0.012f + 89.4f);
 
                 // Thick living carpet. Soil is exposed only in coherent clearing/trail pockets.
-                float keep = Mathf.Clamp01(0.965f + ecology * 0.06f + patch * 0.045f + meadow * 0.035f);
-                if (trail > 0.925f && meadow < 0.43f) keep *= 0.46f;
+                float keep = Mathf.Clamp01(0.54f + ecology * 0.18f + patch * 0.20f + meadow * 0.14f);
+                if (trail > 0.86f && meadow < 0.48f) keep *= 0.28f;
+                if (patch < 0.22f) keep *= 0.35f;
                 if ((float)rng.NextDouble() > keep) continue;
 
                 float y = world.SampleGroundHeight(x, z);
@@ -117,9 +118,9 @@ namespace Dregfall
 
                 int variant = rng.Next(variants.Count);
                 float heightNoise = Mathf.PerlinNoise(x * 0.035f + 9.2f, z * 0.035f + 17.8f);
-                float height = Mathf.Lerp(1.30f, 2.65f,
+                float height = Mathf.Lerp(0.62f, 1.18f,
                     Mathf.Clamp01(heightNoise * 0.72f + (float)rng.NextDouble() * 0.28f));
-                float width = height * Mathf.Lerp(1.00f, 1.45f, (float)rng.NextDouble());
+                float width = Mathf.Lerp(0.62f, 1.05f, (float)rng.NextDouble());
                 Quaternion rotation = Quaternion.Euler(
                     Mathf.Lerp(-2.5f, 2.5f, (float)rng.NextDouble()),
                     (float)rng.NextDouble() * 360f,
@@ -140,7 +141,7 @@ namespace Dregfall
         {
             if (variants.Count == 0 || player == null) return;
 
-            float renderDistance = world.ChunkSize * 1.35f;
+            float renderDistance = world.ChunkSize * 1.05f;
             float renderDistanceSqr = renderDistance * renderDistance;
             Vector3 playerPos = player.position;
 
