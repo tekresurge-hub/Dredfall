@@ -19,10 +19,33 @@ namespace Dregfall
         sealed class GrassChunk
         {
             public readonly List<Matrix4x4>[] matrices;
+            public Matrix4x4[][][] batches;
+            public Vector3 center;
+
             public GrassChunk(int variants)
             {
                 matrices = new List<Matrix4x4>[variants];
                 for (int i = 0; i < variants; i++) matrices[i] = new List<Matrix4x4>();
+            }
+
+            public void BakeBatches()
+            {
+                batches = new Matrix4x4[matrices.Length][][];
+                for (int v = 0; v < matrices.Length; v++)
+                {
+                    List<Matrix4x4> source = matrices[v];
+                    int batchCount = Mathf.CeilToInt(source.Count / (float)BatchSize);
+                    batches[v] = new Matrix4x4[batchCount][];
+                    for (int b = 0; b < batchCount; b++)
+                    {
+                        int start = b * BatchSize;
+                        int count = Mathf.Min(BatchSize, source.Count - start);
+                        var batch = new Matrix4x4[count];
+                        source.CopyTo(start, batch, 0, count);
+                        batches[v][b] = batch;
+                    }
+                    source.Clear();
+                }
             }
         }
 
@@ -96,6 +119,8 @@ namespace Dregfall
                     new Vector3(x, y - 0.025f, z), rotation, new Vector3(width, height, width)));
             }
 
+            data.center = new Vector3((coord.x + 0.5f) * world.ChunkSize, 0f, (coord.y + 0.5f) * world.ChunkSize);
+            data.BakeBatches();
             chunks.Add(coord, data);
         }
 
@@ -105,21 +130,26 @@ namespace Dregfall
         {
             if (variants.Count == 0 || player == null) return;
 
+            float renderDistance = world.ChunkSize * 1.85f;
+            float renderDistanceSqr = renderDistance * renderDistance;
+            Vector3 playerPos = player.position;
+
             foreach (GrassChunk chunk in chunks.Values)
             {
+                float dx = chunk.center.x - playerPos.x;
+                float dz = chunk.center.z - playerPos.z;
+                if (dx * dx + dz * dz > renderDistanceSqr) continue;
+
                 for (int v = 0; v < variants.Count; v++)
                 {
-                    List<Matrix4x4> matrices = chunk.matrices[v];
                     GrassVariant variant = variants[v];
-
-                    for (int start = 0; start < matrices.Count; start += BatchSize)
+                    Matrix4x4[][] batches = chunk.batches[v];
+                    for (int b = 0; b < batches.Length; b++)
                     {
-                        int count = Mathf.Min(BatchSize, matrices.Count - start);
-                        Matrix4x4[] batch = new Matrix4x4[count];
-                        matrices.CopyTo(start, batch, 0, count);
+                        Matrix4x4[] batch = batches[b];
 #pragma warning disable 0618
-                        Graphics.DrawMeshInstanced(variant.mesh, 0, variant.material, batch, count, null,
-                            ShadowCastingMode.Off, true, 0, null, LightProbeUsage.Off, null);
+                        Graphics.DrawMeshInstanced(variant.mesh, 0, variant.material, batch, batch.Length, null,
+                            ShadowCastingMode.Off, false, 0, null, LightProbeUsage.Off, null);
 #pragma warning restore 0618
                     }
                 }
