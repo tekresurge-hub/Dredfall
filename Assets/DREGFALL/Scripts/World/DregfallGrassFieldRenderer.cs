@@ -36,7 +36,7 @@ namespace Dregfall
         {
             world = owner;
             player = target;
-            grassPerChunk = Mathf.Clamp(density, 400, 2600);
+            grassPerChunk = Mathf.Clamp(density, 900, 5200);
             variants.Clear();
 
             if (grassPrefabs == null) return;
@@ -61,7 +61,7 @@ namespace Dregfall
             var rng = new System.Random(seed);
             GrassChunk data = new GrassChunk(variants.Count);
 
-            for (int i = 0; i < grassPerChunk; i++)
+            int carpetCount = Mathf.RoundToInt(grassPerChunk * 1.75f);\n            for (int i = 0; i < carpetCount; i++)
             {
                 float x = coord.x * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
                 float z = coord.y * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
