@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace Dregfall
 {
@@ -9,6 +10,7 @@ namespace Dregfall
         public static void Apply(Camera camera)
         {
             QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
+            QualitySettings.globalTextureMipmapLimit = 0;
             QualitySettings.lodBias = 2.15f;
             QualitySettings.maximumLODLevel = 0;
             QualitySettings.shadowDistance = 72f;
@@ -23,6 +25,13 @@ namespace Dregfall
                 camera.allowMSAA = true;
                 camera.farClipPlane = Mathf.Max(camera.farClipPlane, 420f);
                 camera.backgroundColor = new Color(0.055f, 0.065f, 0.065f);
+
+                // URP has its own post AA setting. SMAA is much better suited to the
+                // thousands of thin alpha-tested leaf/grass edges in DREGFALL than
+                // relying on the Camera MSAA flag alone.
+                UniversalAdditionalCameraData urpCamera = camera.GetUniversalAdditionalCameraData();
+                urpCamera.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+                urpCamera.antialiasingQuality = AntialiasingQuality.High;
             }
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
