@@ -72,6 +72,16 @@ namespace Dregfall
 
                 Material mat = new Material(mr.sharedMaterial) { name = "DREGFALL_Grass_" + prefab.name };
                 mat.enableInstancing = true;
+
+                // Keep grass blades crisp at the elevated gameplay camera angle.
+                // Anisotropic filtering improves oblique texture detail without adding geometry.
+                Texture mainTexture = mat.mainTexture;
+                if (mainTexture != null)
+                {
+                    mainTexture.filterMode = FilterMode.Trilinear;
+                    mainTexture.anisoLevel = 8;
+                }
+
                 variants.Add(new GrassVariant { mesh = mf.sharedMesh, material = mat });
             }
         }
