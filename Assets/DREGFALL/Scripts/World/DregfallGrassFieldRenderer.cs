@@ -100,6 +100,9 @@ namespace Dregfall
                 float x = coord.x * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
                 float z = coord.y * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
                 float ecology = world.GetWildernessDensity(new Vector3(x, 0f, z));
+                // Dense GPU grass also respects streamed waterways; banks remain readable.
+                float waterMask = world.GetWaterMask(x, z);
+                if (waterMask > 0.18f) continue;
                 float patch = Mathf.PerlinNoise(x * 0.026f + 31.7f, z * 0.026f + 73.1f);
                 float meadow = Mathf.PerlinNoise(x * 0.0045f + 119.3f, z * 0.0045f + 211.9f);
                 float trail = Mathf.PerlinNoise(x * 0.012f + 317.2f, z * 0.012f + 89.4f);
