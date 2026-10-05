@@ -6,11 +6,11 @@ Shader "DREGFALL/ProceduralGround"
         _MudTex ("Earth / Soil", 2D) = "white" {}
         _SwampTex ("Forest Floor", 2D) = "white" {}
         _RockTex ("Rock", 2D) = "white" {}
-        _Tiling ("Detail Tiling", Float) = 0.12
+        _Tiling ("Detail Tiling", Float) = 0.19
         _VariationScale ("Biome Variation Scale", Float) = 0.006
         _RockSlopeStart ("Rock Slope Start", Range(0,1)) = 0.30
         _RockSlopeEnd ("Rock Slope End", Range(0,1)) = 0.64
-        _Brightness ("Brightness", Range(0.5,1.5)) = 0.90
+        _Brightness ("Brightness", Range(0.5,1.5)) = 0.98
     }
 
     SubShader
@@ -97,18 +97,18 @@ Shader "DREGFALL/ProceduralGround"
                 float ecology = saturate(macroA * 0.58 + macroB * 0.32 + micro * 0.10);
 
                 // Earth is deliberately the dominant surface.
-                half3 earth = sampleBroken(TEXTURE2D_ARGS(_MudTex, sampler_MudTex), w, _Tiling * 0.70, 5.7);
-                half3 forest = sampleBroken(TEXTURE2D_ARGS(_SwampTex, sampler_SwampTex), w, _Tiling * 0.58, 17.2);
-                half3 grass = sampleBroken(TEXTURE2D_ARGS(_GrassTex, sampler_GrassTex), w, _Tiling * 0.52, 31.4);
+                half3 earth = sampleBroken(TEXTURE2D_ARGS(_MudTex, sampler_MudTex), w, _Tiling * 0.92, 5.7);
+                half3 forest = sampleBroken(TEXTURE2D_ARGS(_SwampTex, sampler_SwampTex), w, _Tiling * 0.78, 17.2);
+                half3 grass = sampleBroken(TEXTURE2D_ARGS(_GrassTex, sampler_GrassTex), w, _Tiling * 0.72, 31.4);
                 half3 rock = sampleBroken(TEXTURE2D_ARGS(_RockTex, sampler_RockTex), w, _Tiling * 0.42, 11.8);
 
                 // Pull imported textures into a muted, realistic DREGFALL palette.
                 float earthLum = dot(earth, half3(0.299,0.587,0.114));
-                earth = lerp(earth, earthLum.xxx, 0.18) * half3(0.82,0.76,0.65);
+                earth = lerp(earth, earthLum.xxx, 0.08) * half3(0.91,0.86,0.76);
                 float forestLum = dot(forest, half3(0.299,0.587,0.114));
-                forest = lerp(forest, forestLum.xxx, 0.25) * half3(0.73,0.72,0.58);
+                forest = lerp(forest, forestLum.xxx, 0.12) * half3(0.84,0.84,0.70);
                 float grassLum = dot(grass, half3(0.299,0.587,0.114));
-                grass = lerp(grass, grassLum.xxx, 0.55) * half3(0.62,0.70,0.53);
+                grass = lerp(grass, grassLum.xxx, 0.24) * half3(0.76,0.86,0.66);
 
                 // Forest litter appears in broad damp/wooded patches.
                 float forestMask = smoothstep(0.47, 0.76, ecology);
@@ -122,8 +122,8 @@ Shader "DREGFALL/ProceduralGround"
 
                 // Broad damp/dry tonal changes make kilometres of ground feel non-uniform.
                 float broad = valueNoise(w * 0.0018 + 203.0);
-                baseColor *= lerp(0.76, 1.02, broad);
-                baseColor *= lerp(0.91, 1.03, micro);
+                baseColor *= lerp(0.86, 1.06, broad);
+                baseColor *= lerp(0.94, 1.05, micro);
 
                 // Expose stone naturally as terrain gets steeper.
                 float slope = 1.0 - saturate(n.y);
@@ -138,7 +138,7 @@ Shader "DREGFALL/ProceduralGround"
                 float ndl = saturate(dot(n, mainLight.direction));
                 half3 ambient = SampleSH(n);
                 half3 lighting = ambient + mainLight.color * ndl * mainLight.shadowAttenuation;
-                lighting = max(lighting, 0.22);
+                // Fine world-space breakup restores close-range surface definition without visible tiling.\n                float grit = valueNoise(w * 0.31 + 317.0);\n                baseColor *= lerp(0.91, 1.08, grit);\n                lighting = max(lighting, 0.28);
                 return half4(baseColor * lighting, 1);
             }
             ENDHLSL
