@@ -134,7 +134,7 @@ namespace Dregfall
             var filter = go.AddComponent<MeshFilter>();
             filter.sharedMesh = mesh;
             var renderer = go.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = GetPlainMaterial();
+            renderer.sharedMaterial = GetGroundMaterial();
             var collider = go.AddComponent<MeshCollider>();
             collider.sharedMesh = mesh;
 
@@ -364,15 +364,24 @@ namespace Dregfall
                 Mathf.FloorToInt(position.z / chunkSize));
         }
 
-        static Material plainMaterial;
-        static Material GetPlainMaterial()
+        static Material groundMaterial;
+        static Material GetGroundMaterial()
         {
-            if (plainMaterial != null) return plainMaterial;
+            if (groundMaterial != null) return groundMaterial;
+
+            Material source = Resources.Load<Material>("DREGFALL_GroundMaterial");
+            if (source != null)
+            {
+                groundMaterial = source;
+                return groundMaterial;
+            }
+
             Shader shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader == null) shader = Shader.Find("Standard");
-            plainMaterial = new Material(shader) { name = "DREGFALL_Phase2_PlainTerrain" };
-            plainMaterial.color = new Color(0.20f, 0.23f, 0.19f);
-            return plainMaterial;
+            groundMaterial = new Material(shader) { name = "DREGFALL_GroundFallback" };
+            groundMaterial.color = new Color(0.18f, 0.22f, 0.16f);
+            groundMaterial.SetFloat("_Smoothness", 0.08f);
+            return groundMaterial;
         }
     }
 }
