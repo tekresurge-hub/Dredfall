@@ -449,53 +449,32 @@ namespace Dregfall
 
         void BuildWaterSurface(Vector2Int coord, Transform parent)
         {
-            // Phase 2D safe creek pass: a narrow deterministic ribbon, never a chunk-sized plane.
-            // Terrain carving remains disabled until this visual pass is runtime-certified.
-            const int segments = 24;
+            // Phase 2D certification pass: force one obvious creek through the spawn area.
+            // This proves the water mesh/material/render path before procedural distribution returns.
+            const int segments = 32;
             float xMin = coord.x * chunkSize;
             float zMin = coord.y * chunkSize;
-            float sx = HashSeed(worldSeed, 211) * 0.001f;
-            float sz = HashSeed(worldSeed, 307) * 0.001f;
+
+            // Test creek crosses only the row of chunks containing world Z = 18m.
+            // It winds gently and stays close enough to spawn to be found immediately.
+            float testCenter = 18f;
+            float margin = 12f;
+            if (testCenter < zMin - margin || testCenter > zMin + chunkSize + margin) return;
 
             var vertices = new List<Vector3>((segments + 1) * 2);
             var uvs = new List<Vector2>((segments + 1) * 2);
             var triangles = new List<int>(segments * 6);
 
-            // Only build a ribbon where this chunk intersects one of the sparse creek bands.
-            bool intersects = false;
-            for (int i = 0; i <= segments; i++)
-            {
-                float x = xMin + chunkSize * (i / (float)segments);
-                float meander = (Mathf.PerlinNoise(x * 0.0022f + sx, sz) - 0.5f) * 72f;
-                float period = 180f;
-                float raw = Mathf.Repeat(-(meander + worldSeed * 0.071f), period);
-                float k = Mathf.Round((zMin + chunkSize * 0.5f - raw) / period);
-                float centerZ = raw + k * period;
-                if (centerZ >= zMin - 5f && centerZ <= zMin + chunkSize + 5f) { intersects = true; break; }
-            }
-            if (!intersects) return;
-
             for (int i = 0; i <= segments; i++)
             {
                 float t = i / (float)segments;
                 float worldX = xMin + chunkSize * t;
-                float sampleZ = zMin + chunkSize * 0.5f;
-                float meander = (Mathf.PerlinNoise(worldX * 0.0022f + sx, sz) - 0.5f) * 72f;
-                float period = 180f;
-                float raw = Mathf.Repeat(-(meander + worldSeed * 0.071f), period);
-                float k = Mathf.Round((sampleZ - raw) / period);
-                float worldZ = raw + k * period;
+                float worldZ = testCenter + Mathf.Sin(worldX * 0.035f) * 5.5f;
+                float width = 2.2f + Mathf.PerlinNoise(worldX * 0.01f + 12.7f, 4.3f) * 1.2f;
 
-                // Keep the creek continuous and visible. Variation changes width, never deletes sections.
-                float width = Mathf.Lerp(1.45f, 2.35f, Mathf.PerlinNoise(worldX * 0.0014f + sx * 2.1f, worldZ * 0.0014f + sz * 2.1f));
-
-                float leftZ = worldZ - width;
-                float rightZ = worldZ + width;
-                float leftY = SampleGroundHeight(worldX, leftZ) + 0.07f;
-                float rightY = SampleGroundHeight(worldX, rightZ) + 0.07f;
-
-                vertices.Add(new Vector3(worldX - xMin, leftY, leftZ - zMin));
-                vertices.Add(new Vector3(worldX - xMin, rightY, rightZ - zMin));
+                float centerY = SampleGroundHeight(worldX, worldZ) + 0.22f;
+                vertices.Add(new Vector3(worldX - xMin, centerY, worldZ - width - zMin));
+                vertices.Add(new Vector3(worldX - xMin, centerY, worldZ + width - zMin));
                 uvs.Add(new Vector2(t * 8f, 0f));
                 uvs.Add(new Vector2(t * 8f, 1f));
 
@@ -507,16 +486,19 @@ namespace Dregfall
                 }
             }
 
-            GameObject water = new GameObject("DREGFALL_SmallStream");
+            GameObject water = new GameObject("DREGFALL_TEST_SMALL_STREAM");
             water.transform.SetParent(parent, false);
-            Mesh mesh = new Mesh { name = $"DREGFALL_Stream_{coord.x}_{coord.y}" };
+            Mesh mesh = new Mesh { name = $"DREGFALL_TestStream_{coord.x}_{coord.y}" };
             mesh.SetVertices(vertices);
             mesh.SetUVs(0, uvs);
             mesh.SetTriangles(triangles, 0);
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             water.AddComponent<MeshFilter>().sharedMesh = mesh;
-            water.AddComponent<MeshRenderer>().sharedMaterial = GetWaterMaterial();
+            var mr = water.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = GetWaterMaterial();
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
         }
 
         static Material waterMaterial;
@@ -526,7 +508,7 @@ namespace Dregfall
             Shader shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader == null) shader = Shader.Find("Standard");
             waterMaterial = new Material(shader) { name = "DREGFALL_Water" };
-            waterMaterial.color = new Color(0.075f, 0.18f, 0.16f, 0.82f);
+            waterMaterial.color = new Color(0.04f, 0.30f, 0.42f, 1f);
             waterMaterial.SetFloat("_Smoothness", 0.82f);
             waterMaterial.SetFloat("_Metallic", 0f);
             return waterMaterial;
