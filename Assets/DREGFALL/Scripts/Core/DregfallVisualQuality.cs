@@ -9,13 +9,13 @@ namespace Dregfall
         public static void Apply(Camera camera)
         {
             QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
-            QualitySettings.lodBias = 1.65f;
+            QualitySettings.lodBias = 2.15f;
             QualitySettings.maximumLODLevel = 0;
-            QualitySettings.shadowDistance = 120f;
-            QualitySettings.shadowResolution = ShadowResolution.High;
+            QualitySettings.shadowDistance = 72f;
+            QualitySettings.shadowResolution = ShadowResolution.Medium;
             QualitySettings.shadows = ShadowQuality.All;
             QualitySettings.softParticles = true;
-            QualitySettings.realtimeReflectionProbes = true;
+            QualitySettings.realtimeReflectionProbes = false;
 
             if (camera != null)
             {
