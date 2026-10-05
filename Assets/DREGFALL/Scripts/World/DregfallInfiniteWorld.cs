@@ -26,6 +26,7 @@ namespace Dregfall
 
         [Header("Phase 2C Wilderness")]
         [SerializeField, Range(0, 160)] int maxTreesPerChunk = 85;
+        [SerializeField, Range(0, 900)] int maxGrassPerChunk = 420;
         [SerializeField, Range(0, 500)] int maxUndergrowthPerChunk = 280;
         [SerializeField, Range(0, 40)] int maxRocksPerChunk = 18;
         [SerializeField] float maxVegetationSlope = 0.72f;
@@ -59,6 +60,7 @@ namespace Dregfall
         public void Initialize(Transform target)
         {
             player = target;
+            DregfallInteractiveGrass.SetPlayer(target);
             chunkRoot = new GameObject("DREGFALL_StreamedWorld").transform;
             transform.SetParent(chunkRoot);
             environmentCatalog = Resources.Load<DregfallEnvironmentCatalog>("DREGFALL_EnvironmentCatalog");
@@ -159,6 +161,7 @@ namespace Dregfall
             // Do not decide the whole chunk from one sample. Each candidate reads the continuous
             // world ecology maps so forests and clearings flow naturally across chunk boundaries.
             SpawnEcologicalCategory(environmentCatalog.trees, maxTreesPerChunk, coord, chunk, rng, 0, 0.78f, 1.24f);
+            SpawnEcologicalCategory(environmentCatalog.grass, maxGrassPerChunk, coord, chunk, rng, 3, 1.05f, 1.75f);
             SpawnEcologicalCategory(environmentCatalog.undergrowth, maxUndergrowthPerChunk, coord, chunk, rng, 1, 0.55f, 1.35f);
             SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.55f, 1.55f);
         }
@@ -177,7 +180,7 @@ namespace Dregfall
             {
                 float worldX = coord.x * chunkSize + 1f + (float)rng.NextDouble() * (chunkSize - 2f);
                 float worldZ = coord.y * chunkSize + 1f + (float)rng.NextDouble() * (chunkSize - 2f);
-                if (new Vector2(worldX, worldZ).sqrMagnitude < spawnClearingRadius * spawnClearingRadius) continue;
+                if (category != 3 && new Vector2(worldX, worldZ).sqrMagnitude < spawnClearingRadius * spawnClearingRadius) continue;
 
                 float broad = GetWildernessDensity(new Vector3(worldX, 0f, worldZ));
                 float forest = Mathf.PerlinNoise(worldX * forestPatchScale + sx * 1.71f,
@@ -188,6 +191,13 @@ namespace Dregfall
                                                 worldZ * 0.0038f + sz * 5.3f);
 
                 float chance;
+                if (category == 3)
+                {
+                    // One shared driver updates these; the clumps themselves have no per-object Update.
+                    if (instance.GetComponent<DregfallInteractiveGrass>() == null)
+                        instance.AddComponent<DregfallInteractiveGrass>();
+                }
+
                 if (category == 0)
                 {
                     // Big and small forests: dense cores, feathered edges, occasional open glades.
@@ -199,6 +209,17 @@ namespace Dregfall
                     // Forest floor should stay visually busy even around clearings and tree lines.
                     chance = Mathf.Clamp01(0.48f + broad * 0.20f + forest * 0.22f + local * 0.18f);
                     if (glade > 0.78f) chance *= 0.65f;
+                }
+                else if (category == 3)
+                {
+                    // Grass is the living carpet. Keep it thick through forests and especially clearings,
+                    // but preserve occasional soil pockets so the terrain still has natural variation.
+                    chance = Mathf.Clamp01(0.72f + broad * 0.12f + local * 0.14f);
+                    if (forest > 0.82f) chance *= 0.88f;
+                    if (glade > 0.72f) chance = Mathf.Min(1f, chance + 0.08f);
+                    float soilPocket = Mathf.PerlinNoise(worldX * 0.018f + sx * 7.1f,
+                                                         worldZ * 0.018f + sz * 7.1f);
+                    if (soilPocket > 0.84f) chance *= 0.18f;
                 }
                 else
                 {
@@ -212,14 +233,14 @@ namespace Dregfall
                 float hx = SampleHeight(worldX + 1.25f, worldZ, sx, sz);
                 float hz = SampleHeight(worldX, worldZ + 1.25f, sx, sz);
                 float slope = Mathf.Max(Mathf.Abs(hx - y), Mathf.Abs(hz - y)) / 1.25f;
-                float allowedSlope = category == 0 ? maxVegetationSlope : maxVegetationSlope * 1.25f;
+                float allowedSlope = category == 0 ? maxVegetationSlope : category == 3 ? maxVegetationSlope * 1.05f : maxVegetationSlope * 1.25f;
                 if (slope > allowedSlope) continue;
 
                 GameObject prefab = PickRuntimeSafePrefab(prefabs, rng);
                 if (prefab == null) continue;
 
                 GameObject instance = Instantiate(prefab, parent);
-                string prefix = category == 0 ? "Tree" : category == 1 ? "GroundPlant" : "Rock";
+                string prefix = category == 0 ? "Tree" : category == 1 ? "GroundPlant" : category == 3 ? "Grass" : "Rock";
                 instance.name = $"Wild_{prefix}_{prefab.name}_{spawned}";
                 instance.transform.position = new Vector3(worldX, y, worldZ);
                 instance.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
