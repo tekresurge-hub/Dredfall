@@ -59,7 +59,7 @@ namespace Dregfall
         {
             world = owner;
             player = target;
-            grassPerChunk = Mathf.Clamp(density, 500, 2200);
+            grassPerChunk = Mathf.Clamp(density, 350, 2200);
             variants.Clear();
 
             if (grassPrefabs == null) return;
@@ -121,9 +121,9 @@ namespace Dregfall
 
                 int variant = rng.Next(variants.Count);
                 float heightNoise = Mathf.PerlinNoise(x * 0.035f + 9.2f, z * 0.035f + 17.8f);
-                float height = Mathf.Lerp(0.62f, 1.18f,
+                float height = Mathf.Lerp(0.72f, 1.28f,
                     Mathf.Clamp01(heightNoise * 0.72f + (float)rng.NextDouble() * 0.28f));
-                float width = Mathf.Lerp(0.62f, 1.05f, (float)rng.NextDouble());
+                float width = Mathf.Lerp(0.70f, 1.08f, (float)rng.NextDouble());
                 Quaternion rotation = Quaternion.Euler(
                     Mathf.Lerp(-2.5f, 2.5f, (float)rng.NextDouble()),
                     (float)rng.NextDouble() * 360f,
@@ -144,7 +144,7 @@ namespace Dregfall
         {
             if (variants.Count == 0 || player == null) return;
 
-            float renderDistance = world.ChunkSize * 1.05f;
+            // Dense blades are only worth drawing close to the survivor. Distant terrain relies on its ground material.\n            float renderDistance = world.ChunkSize * 0.82f;
             float renderDistanceSqr = renderDistance * renderDistance;
             Vector3 playerPos = player.position;
 
