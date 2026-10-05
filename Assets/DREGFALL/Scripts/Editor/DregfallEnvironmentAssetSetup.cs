@@ -115,14 +115,14 @@ namespace Dregfall.Editor
             ground.SetTexture("_MudTex", mud);
             ground.SetTexture("_SwampTex", forest);
             ground.SetTexture("_RockTex", rock);
-            ground.SetFloat("_Tiling", 0.18f);
-            ground.SetFloat("_VariationScale", 0.012f);
+            ground.SetFloat("_Tiling", 0.12f);
+            ground.SetFloat("_VariationScale", 0.006f);
             ground.SetFloat("_RockSlopeStart", 0.30f);
             ground.SetFloat("_RockSlopeEnd", 0.64f);
-            ground.SetFloat("_Brightness", 1.02f);
+            ground.SetFloat("_Brightness", 0.90f);
 
             EditorUtility.SetDirty(ground);
-            Debug.Log("[DREGFALL] Procedural ground ready: grass + soil + forest floor + slope rock blending.");
+            Debug.Log("[DREGFALL] Realistic procedural ground ready: earth-dominant soil + forest floor + sparse grass accents + slope rock.");
         }
 
         static GameObject[] LoadPrefabs(string[] paths)
