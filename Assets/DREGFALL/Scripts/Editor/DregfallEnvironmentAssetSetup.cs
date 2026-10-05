@@ -54,6 +54,14 @@ namespace Dregfall.Editor
                 "Assets/Flora-Form/Vegetation/Pine_002_M2.prefab"
             });
 
+            catalog.grass = LoadPrefabs(new[]
+            {
+                "Assets/Flora-Form/Vegetation/Grass_A.prefab",
+                "Assets/Flora-Form/Vegetation/Grass_B.prefab",
+                "Assets/Flora-Form/Vegetation/GrassDry_A.prefab",
+                "Assets/Flora-Form/Vegetation/GrassDry_B.prefab"
+            });
+
             catalog.undergrowth = LoadPrefabs(new[]
             {
                 "Assets/Flora-Form/Vegetation/Bush_A.prefab",
@@ -78,7 +86,7 @@ namespace Dregfall.Editor
             EnsureGroundMaterial();
             AssetDatabase.SaveAssets();
             SessionState.SetBool(VersionKey, true);
-            Debug.Log($"[DREGFALL] Environment catalog ready: {catalog.trees.Length} trees, {catalog.undergrowth.Length} undergrowth, {catalog.rocks.Length} rocks.");
+            Debug.Log($"[DREGFALL] Environment catalog ready: {catalog.trees.Length} trees, {catalog.grass.Length} grasses, {catalog.undergrowth.Length} undergrowth, {catalog.rocks.Length} rocks.");
         }
 
         static void EnsureGroundMaterial()
