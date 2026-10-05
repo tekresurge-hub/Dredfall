@@ -158,7 +158,9 @@ namespace Dregfall
 
             loaded.Add(coord, go);
             if (grassField != null) grassField.BuildChunk(coord);
-            BuildWaterSurface(coord, go.transform);
+            // Phase 2D water rendering temporarily disabled: previous surface mesh could cover streamed terrain.
+            // Water mask/bed data stays deterministic so localized streams can be rebuilt safely.
+            // BuildWaterSurface(coord, go.transform);
             PopulateWilderness(coord, go.transform);
         }
 
