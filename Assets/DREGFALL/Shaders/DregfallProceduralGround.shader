@@ -75,7 +75,8 @@ Shader "DREGFALL/ProceduralGround"
             half4 frag(Varyings i) : SV_Target
             {
                 float3 n = normalize(i.normalWS);
-                float2 uv = i.positionWS.xz * _Tiling;
+                float2 worldXZ = i.positionWS.xz;
+                float2 uv = worldXZ * (_Tiling * 0.62);
 
                 // Large, soft ecological patches that remain continuous across streamed chunks.
                 float2 cell = floor(i.positionWS.xz * _VariationScale);
@@ -87,23 +88,48 @@ Shader "DREGFALL/ProceduralGround"
                 float d = hash21(cell + float2(1,1));
                 float variation = lerp(lerp(a,b,f.x), lerp(c,d,f.x), f.y);
 
-                half3 grass = SAMPLE_TEXTURE2D(_GrassTex, sampler_GrassTex, uv).rgb;
-                half3 mud = SAMPLE_TEXTURE2D(_MudTex, sampler_MudTex, uv * 0.82).rgb;
-                half3 forest = SAMPLE_TEXTURE2D(_SwampTex, sampler_SwampTex, uv * 0.70).rgb;
-                half3 rock = SAMPLE_TEXTURE2D(_RockTex, sampler_RockTex, uv * 0.55).rgb;
+                // Two world-space samples at different scales break up recognizable texture repetition.
+                half3 grassA = SAMPLE_TEXTURE2D(_GrassTex, sampler_GrassTex, uv).rgb;
+                half3 grassB = SAMPLE_TEXTURE2D(_GrassTex, sampler_GrassTex, worldXZ * (_Tiling * 0.19) + 17.31).rgb;
+                half3 grass = lerp(grassA, grassB, 0.38);
 
-                float mudMask = smoothstep(0.46, 0.67, variation) * (1.0 - smoothstep(0.72, 0.90, variation));
-                float forestMask = smoothstep(0.70, 0.92, variation);
-                half3 baseColor = lerp(grass, mud, mudMask * 0.72);
-                baseColor = lerp(baseColor, forest, forestMask * 0.78);
+                half3 mudA = SAMPLE_TEXTURE2D(_MudTex, sampler_MudTex, uv * 0.74 + 5.7).rgb;
+                half3 mudB = SAMPLE_TEXTURE2D(_MudTex, sampler_MudTex, worldXZ * (_Tiling * 0.23) + 31.2).rgb;
+                half3 mud = lerp(mudA, mudB, 0.34);
 
+                half3 forestA = SAMPLE_TEXTURE2D(_SwampTex, sampler_SwampTex, uv * 0.61 + 11.4).rgb;
+                half3 forestB = SAMPLE_TEXTURE2D(_SwampTex, sampler_SwampTex, worldXZ * (_Tiling * 0.16) + 43.8).rgb;
+                half3 forest = lerp(forestA, forestB, 0.42);
+
+                half3 rockA = SAMPLE_TEXTURE2D(_RockTex, sampler_RockTex, uv * 0.48 + 7.2).rgb;
+                half3 rockB = SAMPLE_TEXTURE2D(_RockTex, sampler_RockTex, worldXZ * (_Tiling * 0.15) + 26.6).rgb;
+                half3 rock = lerp(rockA, rockB, 0.36);
+
+                // Suppress the neon-green look while keeping believable vegetation color.
+                float grassLum = dot(grass, half3(0.299, 0.587, 0.114));
+                grass = lerp(grass, grassLum.xxx, 0.34);
+                grass *= half3(0.76, 0.80, 0.68);
+
+                float mudMask = smoothstep(0.34, 0.58, variation) * (1.0 - smoothstep(0.74, 0.91, variation));
+                float forestMask = smoothstep(0.61, 0.86, variation);
+                half3 baseColor = lerp(grass, mud, mudMask * 0.58);
+                baseColor = lerp(baseColor, forest, forestMask * 0.62);
+
+                // Add broad dark/light terrain zones instead of identical-looking tiles.
+                float broad = hash21(floor(worldXZ * 0.0045));
+                float macroTint = lerp(0.78, 1.02, variation * 0.65 + broad * 0.35);
+                baseColor *= macroTint;
+
+                // Rock comes through progressively on steeper ground with noisy edges.
                 float slope = 1.0 - saturate(n.y);
-                float rockMask = smoothstep(_RockSlopeStart, _RockSlopeEnd, slope);
-                baseColor = lerp(baseColor, rock, rockMask);
+                float slopeNoise = (variation - 0.5) * 0.14;
+                float rockMask = smoothstep(_RockSlopeStart + slopeNoise, _RockSlopeEnd + slopeNoise, slope);
+                baseColor = lerp(baseColor, rock * 0.82, rockMask * 0.88);
 
-                // Subtle macro tint stops the world looking like one repeated texture.
-                float macro = lerp(0.88, 1.08, variation);
-                baseColor *= macro * _Brightness;
+                // DREGFALL is intentionally subdued rather than bright/saturated.
+                float lum = dot(baseColor, half3(0.299, 0.587, 0.114));
+                baseColor = lerp(baseColor, lum.xxx, 0.10);
+                baseColor *= _Brightness;
 
                 Light mainLight = GetMainLight(i.shadowCoord);
                 float ndl = saturate(dot(n, mainLight.direction));
