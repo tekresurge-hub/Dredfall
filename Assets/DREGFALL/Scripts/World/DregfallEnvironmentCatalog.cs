@@ -6,6 +6,7 @@ namespace Dregfall
     public sealed class DregfallEnvironmentCatalog : ScriptableObject
     {
         public GameObject[] trees;
+        public GameObject[] grass;
         public GameObject[] undergrowth;
         public GameObject[] rocks;
     }
