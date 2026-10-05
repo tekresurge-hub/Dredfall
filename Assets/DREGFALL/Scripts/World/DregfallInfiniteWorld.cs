@@ -14,6 +14,13 @@ namespace Dregfall
         [SerializeField] float terrainHeight = 5f;
         [SerializeField] float noiseScale = 0.0065f;
 
+        [Header("Geography")]
+        [SerializeField] float continentalScale = 0.00065f;
+        [SerializeField] float regionalScale = 0.0018f;
+        [SerializeField] float localScale = 0.0075f;
+        [SerializeField] float roughnessScale = 0.0032f;
+        [SerializeField] float maxRegionalRelief = 18f;
+
         [Header("Streaming")]
         [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
 
@@ -173,9 +180,44 @@ namespace Dregfall
 
         float SampleHeight(float x, float z, float sx, float sz)
         {
-            float broad = Mathf.PerlinNoise(x * noiseScale + sx, z * noiseScale + sz);
-            float detail = Mathf.PerlinNoise(x * noiseScale * 2.35f + sx * 1.7f, z * noiseScale * 2.35f + sz * 1.7f);
-            return ((broad * 0.78f + detail * 0.22f) - 0.5f) * terrainHeight;
+            // Very large landforms keep the world from looking like repeated noise.
+            float continental = Mathf.PerlinNoise(x * continentalScale + sx * 0.31f, z * continentalScale + sz * 0.31f);
+            float regional = Mathf.PerlinNoise(x * regionalScale + sx * 0.73f, z * regionalScale + sz * 0.73f);
+            float roughness = Mathf.PerlinNoise(x * roughnessScale + sx * 1.19f, z * roughnessScale + sz * 1.19f);
+
+            // Some broad regions stay naturally flatter for future roads, farms and settlements,
+            // while wilderness regions can become rougher and more elevated.
+            float settlementSuitability = Mathf.SmoothStep(0.28f, 0.72f,
+                Mathf.PerlinNoise(x * 0.00115f + sx * 2.07f, z * 0.00115f + sz * 2.07f));
+            float flatness = 1f - Mathf.Abs(settlementSuitability * 2f - 1f);
+            flatness = Mathf.SmoothStep(0.35f, 0.85f, flatness);
+
+            float regionalShape = ((continental - 0.5f) * 0.65f + (regional - 0.5f) * 0.35f) * maxRegionalRelief;
+            regionalShape *= Mathf.Lerp(1f, 0.42f, flatness);
+
+            float local = Mathf.PerlinNoise(x * localScale + sx, z * localScale + sz) - 0.5f;
+            float detail = Mathf.PerlinNoise(x * noiseScale * 2.35f + sx * 1.7f, z * noiseScale * 2.35f + sz * 1.7f) - 0.5f;
+            float localAmplitude = Mathf.Lerp(terrainHeight * 1.45f, terrainHeight * 0.32f, flatness);
+            localAmplitude *= Mathf.Lerp(0.75f, 1.25f, roughness);
+
+            return regionalShape + local * localAmplitude + detail * terrainHeight * 0.18f;
+        }
+
+        public float GetSettlementSuitability(Vector3 worldPosition)
+        {
+            float sx = HashSeed(worldSeed, 17) * 0.001f;
+            float sz = HashSeed(worldSeed, 53) * 0.001f;
+            float n = Mathf.PerlinNoise(worldPosition.x * 0.00115f + sx * 2.07f,
+                                        worldPosition.z * 0.00115f + sz * 2.07f);
+            return 1f - Mathf.Abs(Mathf.SmoothStep(0.28f, 0.72f, n) * 2f - 1f);
+        }
+
+        public float GetWildernessDensity(Vector3 worldPosition)
+        {
+            float sx = HashSeed(worldSeed, 89) * 0.001f;
+            float sz = HashSeed(worldSeed, 131) * 0.001f;
+            return Mathf.PerlinNoise(worldPosition.x * 0.0009f + sx,
+                                     worldPosition.z * 0.0009f + sz);
         }
 
         static int HashSeed(int seed, int salt)
