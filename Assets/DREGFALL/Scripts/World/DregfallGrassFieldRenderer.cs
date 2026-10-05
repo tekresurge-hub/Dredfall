@@ -84,7 +84,7 @@ namespace Dregfall
             var rng = new System.Random(seed);
             GrassChunk data = new GrassChunk(variants.Count);
 
-            int carpetCount = Mathf.RoundToInt(grassPerChunk * 2.15f);
+            int carpetCount = Mathf.RoundToInt(grassPerChunk * 1.65f);
             for (int i = 0; i < carpetCount; i++)
             {
                 float x = coord.x * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
@@ -130,7 +130,7 @@ namespace Dregfall
         {
             if (variants.Count == 0 || player == null) return;
 
-            float renderDistance = world.ChunkSize * 1.85f;
+            float renderDistance = world.ChunkSize * 1.35f;
             float renderDistanceSqr = renderDistance * renderDistance;
             Vector3 playerPos = player.position;
 
