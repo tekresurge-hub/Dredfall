@@ -25,6 +25,19 @@ namespace Dregfall
         Vector2Int lastPlayerChunk = new(int.MinValue, int.MinValue);
 
         public int WorldSeed => worldSeed;
+        public int ChunkSize => chunkSize;
+
+        public string GetChunkId(Vector2Int coord) => $"world-{worldSeed}:chunk-{coord.x}:{coord.y}";
+
+        public Vector2Int GetChunkCoordinate(Vector3 worldPosition) => WorldToChunk(worldPosition);
+
+        public string GetStableWorldId(Vector3 worldPosition)
+        {
+            Vector2Int coord = WorldToChunk(worldPosition);
+            int localX = Mathf.FloorToInt(worldPosition.x - coord.x * chunkSize);
+            int localZ = Mathf.FloorToInt(worldPosition.z - coord.y * chunkSize);
+            return $"{GetChunkId(coord)}:cell-{localX}:{localZ}";
+        }
 
         public void Initialize(Transform target)
         {
@@ -67,8 +80,9 @@ namespace Dregfall
 
             foreach (Vector2Int coord in remove)
             {
-                Destroy(loaded[coord]);
+                GameObject oldChunk = loaded[coord];
                 loaded.Remove(coord);
+                Destroy(oldChunk);
             }
         }
 
@@ -95,7 +109,7 @@ namespace Dregfall
         {
             if (loaded.ContainsKey(coord)) return;
 
-            GameObject go = new GameObject($"Chunk_{coord.x}_{coord.y}");
+            GameObject go = new GameObject($"Chunk_{coord.x}_{coord.y}__{GetChunkId(coord)}");
             go.transform.SetParent(chunkRoot, false);
             go.transform.position = new Vector3(coord.x * chunkSize, 0f, coord.y * chunkSize);
 
