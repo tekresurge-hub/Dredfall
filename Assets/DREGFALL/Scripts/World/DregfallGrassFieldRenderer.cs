@@ -66,11 +66,13 @@ namespace Dregfall
                 float x = coord.x * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
                 float z = coord.y * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
                 float ecology = world.GetWildernessDensity(new Vector3(x, 0f, z));
-                float patch = Mathf.PerlinNoise(x * 0.021f + 31.7f, z * 0.021f + 73.1f);
-                float barePatch = Mathf.PerlinNoise(x * 0.008f + 119.3f, z * 0.008f + 211.9f);
+                float patch = Mathf.PerlinNoise(x * 0.026f + 31.7f, z * 0.026f + 73.1f);
+                float meadow = Mathf.PerlinNoise(x * 0.0045f + 119.3f, z * 0.0045f + 211.9f);
+                float trail = Mathf.PerlinNoise(x * 0.012f + 317.2f, z * 0.012f + 89.4f);
 
-                float keep = Mathf.Clamp01(0.86f + ecology * 0.12f + patch * 0.08f);
-                if (barePatch > 0.86f) keep *= 0.38f;
+                // Thick living carpet. Soil is exposed only in coherent clearing/trail pockets.
+                float keep = Mathf.Clamp01(0.965f + ecology * 0.06f + patch * 0.045f + meadow * 0.035f);
+                if (trail > 0.925f && meadow < 0.43f) keep *= 0.46f;
                 if ((float)rng.NextDouble() > keep) continue;
 
                 float y = world.SampleGroundHeight(x, z);
@@ -80,8 +82,10 @@ namespace Dregfall
                 if (slope > 0.82f) continue;
 
                 int variant = rng.Next(variants.Count);
-                float height = Mathf.Lerp(1.45f, 2.55f, (float)rng.NextDouble());
-                float width = height * Mathf.Lerp(0.72f, 1.18f, (float)rng.NextDouble());
+                float heightNoise = Mathf.PerlinNoise(x * 0.035f + 9.2f, z * 0.035f + 17.8f);
+                float height = Mathf.Lerp(1.30f, 2.65f,
+                    Mathf.Clamp01(heightNoise * 0.72f + (float)rng.NextDouble() * 0.28f));
+                float width = height * Mathf.Lerp(1.00f, 1.45f, (float)rng.NextDouble());
                 Quaternion rotation = Quaternion.Euler(
                     Mathf.Lerp(-2.5f, 2.5f, (float)rng.NextDouble()),
                     (float)rng.NextDouble() * 360f,
