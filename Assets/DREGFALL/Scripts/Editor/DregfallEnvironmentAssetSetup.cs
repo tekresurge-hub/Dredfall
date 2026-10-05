@@ -80,10 +80,86 @@ namespace Dregfall.Editor
             foreach (string path in paths)
             {
                 GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                if (prefab != null) list.Add(prefab);
-                else Debug.LogWarning("[DREGFALL] Environment prefab missing: " + path);
+                if (prefab == null)
+                {
+                    Debug.LogWarning("[DREGFALL] Environment prefab missing: " + path);
+                    continue;
+                }
+
+                RepairPrefabMaterials(prefab, path);
+                if (HasBrokenMaterials(prefab))
+                {
+                    Debug.LogWarning("[DREGFALL] Skipping prefab with unresolved material/shader errors: " + path);
+                    continue;
+                }
+
+                list.Add(prefab);
             }
             return list.ToArray();
+        }
+
+        static void RepairPrefabMaterials(GameObject prefab, string prefabPath)
+        {
+            Shader urpLit = Shader.Find("Universal Render Pipeline/Lit");
+            if (urpLit == null) return;
+
+            Renderer[] renderers = prefab.GetComponentsInChildren<Renderer>(true);
+            foreach (Renderer renderer in renderers)
+            {
+                foreach (Material material in renderer.sharedMaterials)
+                {
+                    if (material == null || material.shader == null) continue;
+                    string shaderName = material.shader.name;
+                    bool broken = shaderName == "Hidden/InternalErrorShader" ||
+                                  shaderName.StartsWith("Legacy Shaders/") ||
+                                  shaderName == "Standard" ||
+                                  shaderName.Contains("Nature/SpeedTree");
+                    if (!broken) continue;
+
+                    string materialPath = AssetDatabase.GetAssetPath(material);
+                    if (string.IsNullOrEmpty(materialPath) || !materialPath.StartsWith("Assets/")) continue;
+
+                    Texture main = null;
+                    Color tint = Color.white;
+                    if (material.HasProperty("_BaseMap")) main = material.GetTexture("_BaseMap");
+                    else if (material.HasProperty("_MainTex")) main = material.GetTexture("_MainTex");
+                    if (material.HasProperty("_BaseColor")) tint = material.GetColor("_BaseColor");
+                    else if (material.HasProperty("_Color")) tint = material.GetColor("_Color");
+
+                    material.shader = urpLit;
+                    if (main != null) material.SetTexture("_BaseMap", main);
+                    material.SetColor("_BaseColor", tint);
+
+                    // Vegetation cards need alpha clipping after conversion.
+                    string n = material.name.ToLowerInvariant();
+                    if (n.Contains("leaf") || n.Contains("leaves") || n.Contains("fern") ||
+                        n.Contains("bush") || n.Contains("grass") || n.Contains("pine"))
+                    {
+                        material.SetFloat("_AlphaClip", 1f);
+                        material.SetFloat("_Cutoff", 0.35f);
+                        material.EnableKeyword("_ALPHATEST_ON");
+                        material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+                    }
+
+                    EditorUtility.SetDirty(material);
+                    Debug.Log($"[DREGFALL] Repaired environment material '{material.name}' for URP ({prefabPath}).");
+                }
+            }
+        }
+
+        static bool HasBrokenMaterials(GameObject prefab)
+        {
+            Renderer[] renderers = prefab.GetComponentsInChildren<Renderer>(true);
+            foreach (Renderer renderer in renderers)
+            {
+                foreach (Material material in renderer.sharedMaterials)
+                {
+                    if (material == null || material.shader == null ||
+                        material.shader.name == "Hidden/InternalErrorShader")
+                        return true;
+                }
+            }
+            return false;
         }
     }
 }
