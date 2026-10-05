@@ -160,7 +160,7 @@ namespace Dregfall
             if (grassField != null) grassField.BuildChunk(coord);
             // Phase 2D water rendering temporarily disabled: previous surface mesh could cover streamed terrain.
             // Water mask/bed data stays deterministic so localized streams can be rebuilt safely.
-            // BuildWaterSurface(coord, go.transform);
+            BuildWaterSurface(coord, go.transform);
             PopulateWilderness(coord, go.transform);
         }
 
@@ -449,49 +449,68 @@ namespace Dregfall
 
         void BuildWaterSurface(Vector2Int coord, Transform parent)
         {
-            int resolution = Mathf.Max(17, verticesPerSide);
-            float step = (float)chunkSize / (resolution - 1);
-            var vertices = new List<Vector3>();
-            var uvs = new List<Vector2>();
-            var triangles = new List<int>();
+            // Phase 2D safe creek pass: a narrow deterministic ribbon, never a chunk-sized plane.
+            // Terrain carving remains disabled until this visual pass is runtime-certified.
+            const int segments = 24;
+            float xMin = coord.x * chunkSize;
+            float zMin = coord.y * chunkSize;
+            float sx = HashSeed(worldSeed, 211) * 0.001f;
+            float sz = HashSeed(worldSeed, 307) * 0.001f;
 
-            for (int z = 0; z < resolution - 1; z++)
-            for (int x = 0; x < resolution - 1; x++)
+            var vertices = new List<Vector3>((segments + 1) * 2);
+            var uvs = new List<Vector2>((segments + 1) * 2);
+            var triangles = new List<int>(segments * 6);
+
+            // Only build a ribbon where this chunk intersects one of the sparse creek bands.
+            bool intersects = false;
+            for (int i = 0; i <= segments; i++)
             {
-                float x0 = x * step, x1 = (x + 1) * step;
-                float z0 = z * step, z1 = (z + 1) * step;
-                float wx = coord.x * chunkSize + (x0 + x1) * 0.5f;
-                float wz = coord.y * chunkSize + (z0 + z1) * 0.5f;
+                float x = xMin + chunkSize * (i / (float)segments);
+                float meander = (Mathf.PerlinNoise(x * 0.0022f + sx, (zMin + chunkSize * 0.5f) * 0.00045f + sz) - 0.5f) * 105f;
+                float period = 420f;
+                float raw = Mathf.Repeat(-(meander + worldSeed * 0.071f), period);
+                float k = Mathf.Round((zMin + chunkSize * 0.5f - raw) / period);
+                float centerZ = raw + k * period;
+                if (centerZ >= zMin - 5f && centerZ <= zMin + chunkSize + 5f) { intersects = true; break; }
+            }
+            if (!intersects) return;
 
-                float centerMask = GetWaterMask(wx, wz);
-                if (centerMask < 0.60f) continue;
+            for (int i = 0; i <= segments; i++)
+            {
+                float t = i / (float)segments;
+                float worldX = xMin + chunkSize * t;
+                float sampleZ = zMin + chunkSize * 0.5f;
+                float meander = (Mathf.PerlinNoise(worldX * 0.0022f + sx, sampleZ * 0.00045f + sz) - 0.5f) * 105f;
+                float period = 420f;
+                float raw = Mathf.Repeat(-(meander + worldSeed * 0.071f), period);
+                float k = Mathf.Round((sampleZ - raw) / period);
+                float worldZ = raw + k * period;
 
-                float c0 = GetWaterMask(coord.x * chunkSize + x0, coord.y * chunkSize + z0);
-                float c1 = GetWaterMask(coord.x * chunkSize + x1, coord.y * chunkSize + z0);
-                float c2 = GetWaterMask(coord.x * chunkSize + x0, coord.y * chunkSize + z1);
-                float c3 = GetWaterMask(coord.x * chunkSize + x1, coord.y * chunkSize + z1);
-                if (Mathf.Max(Mathf.Max(c0, c1), Mathf.Max(c2, c3)) < 0.38f) continue;
+                float gate = Mathf.PerlinNoise(worldX * 0.00042f + sx * 1.7f, worldZ * 0.00042f + sz * 1.7f);
+                float width = Mathf.Lerp(1.25f, 2.4f, Mathf.PerlinNoise(worldX * 0.0014f + sx * 2.1f, worldZ * 0.0014f + sz * 2.1f));
+                if (gate < 0.46f) width = 0.08f;
 
-                // Keep the water just above its locally carved bed, never above surrounding terrain.
-                float bed = SampleGroundHeight(wx, wz);
-                float surface = bed + Mathf.Lerp(0.18f, creekDepth * 0.68f, centerMask);
+                float leftZ = worldZ - width;
+                float rightZ = worldZ + width;
+                float leftY = SampleGroundHeight(worldX, leftZ) + 0.07f;
+                float rightY = SampleGroundHeight(worldX, rightZ) + 0.07f;
 
-                int i = vertices.Count;
-                vertices.Add(new Vector3(x0, surface, z0));
-                vertices.Add(new Vector3(x1, surface, z0));
-                vertices.Add(new Vector3(x0, surface, z1));
-                vertices.Add(new Vector3(x1, surface, z1));
-                uvs.Add(new Vector2(0, 0)); uvs.Add(new Vector2(1, 0));
-                uvs.Add(new Vector2(0, 1)); uvs.Add(new Vector2(1, 1));
-                triangles.Add(i); triangles.Add(i + 2); triangles.Add(i + 1);
-                triangles.Add(i + 1); triangles.Add(i + 2); triangles.Add(i + 3);
+                vertices.Add(new Vector3(worldX - xMin, leftY, leftZ - zMin));
+                vertices.Add(new Vector3(worldX - xMin, rightY, rightZ - zMin));
+                uvs.Add(new Vector2(t * 8f, 0f));
+                uvs.Add(new Vector2(t * 8f, 1f));
+
+                if (i < segments)
+                {
+                    int v = i * 2;
+                    triangles.Add(v); triangles.Add(v + 2); triangles.Add(v + 1);
+                    triangles.Add(v + 1); triangles.Add(v + 2); triangles.Add(v + 3);
+                }
             }
 
-            if (vertices.Count == 0) return;
-
-            GameObject water = new GameObject("Waterway");
+            GameObject water = new GameObject("DREGFALL_SmallStream");
             water.transform.SetParent(parent, false);
-            Mesh mesh = new Mesh { name = $"DREGFALL_Water_{coord.x}_{coord.y}" };
+            Mesh mesh = new Mesh { name = $"DREGFALL_Stream_{coord.x}_{coord.y}" };
             mesh.SetVertices(vertices);
             mesh.SetUVs(0, uvs);
             mesh.SetTriangles(triangles, 0);
