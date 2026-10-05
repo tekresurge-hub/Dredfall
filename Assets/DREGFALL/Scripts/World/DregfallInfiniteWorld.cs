@@ -26,7 +26,8 @@ namespace Dregfall
 
         [Header("Phase 2C Wilderness")]
         [SerializeField, Range(0, 160)] int maxTreesPerChunk = 85;
-        [SerializeField, Range(0, 900)] int maxGrassPerChunk = 420;
+        [SerializeField, Range(400, 2600)] int denseGrassPerChunk = 1800;
+        [SerializeField, Range(0, 160)] int interactiveGrassPerChunk = 70;
         [SerializeField, Range(0, 500)] int maxUndergrowthPerChunk = 280;
         [SerializeField, Range(0, 40)] int maxRocksPerChunk = 18;
         [SerializeField] float maxVegetationSlope = 0.72f;
@@ -35,6 +36,7 @@ namespace Dregfall
         [SerializeField] float clearingScale = 0.009f;
 
         DregfallEnvironmentCatalog environmentCatalog;
+        DregfallGrassFieldRenderer grassField;
         Transform player;
         Transform chunkRoot;
         readonly Dictionary<Vector2Int, GameObject> loaded = new();
@@ -66,6 +68,11 @@ namespace Dregfall
             environmentCatalog = Resources.Load<DregfallEnvironmentCatalog>("DREGFALL_EnvironmentCatalog");
             if (environmentCatalog == null)
                 Debug.LogWarning("[DREGFALL] Environment catalog not ready yet. Unity will generate it automatically in the Editor.");
+            else
+            {
+                grassField = gameObject.AddComponent<DregfallGrassFieldRenderer>();
+                grassField.Initialize(this, target, environmentCatalog.grass, denseGrassPerChunk);
+            }
             Debug.Log($"[DREGFALL] Unlimited world initialized. Seed: {worldSeed}");
             Refresh(true);
             StartCoroutine(BuildQueuedChunks());
@@ -104,6 +111,7 @@ namespace Dregfall
             {
                 GameObject oldChunk = loaded[coord];
                 loaded.Remove(coord);
+                if (grassField != null) grassField.RemoveChunk(coord);
                 Destroy(oldChunk);
             }
         }
@@ -144,6 +152,7 @@ namespace Dregfall
             collider.sharedMesh = mesh;
 
             loaded.Add(coord, go);
+            if (grassField != null) grassField.BuildChunk(coord);
             PopulateWilderness(coord, go.transform);
         }
 
@@ -161,7 +170,7 @@ namespace Dregfall
             // Do not decide the whole chunk from one sample. Each candidate reads the continuous
             // world ecology maps so forests and clearings flow naturally across chunk boundaries.
             SpawnEcologicalCategory(environmentCatalog.trees, maxTreesPerChunk, coord, chunk, rng, 0, 0.78f, 1.24f);
-            SpawnEcologicalCategory(environmentCatalog.grass, maxGrassPerChunk, coord, chunk, rng, 3, 1.05f, 1.75f);
+            SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 1.35f, 2.15f);
             SpawnEcologicalCategory(environmentCatalog.undergrowth, maxUndergrowthPerChunk, coord, chunk, rng, 1, 0.55f, 1.35f);
             SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.55f, 1.55f);
         }
@@ -345,6 +354,13 @@ namespace Dregfall
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             return mesh;
+        }
+
+        public float SampleGroundHeight(float x, float z)
+        {
+            float sx = HashSeed(worldSeed, 17) * 0.001f;
+            float sz = HashSeed(worldSeed, 53) * 0.001f;
+            return SampleHeight(x, z, sx, sz);
         }
 
         float SampleHeight(float x, float z, float sx, float sz)
