@@ -1,0 +1,195 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Dregfall
+{
+    public sealed class DregfallInfiniteWorld : MonoBehaviour
+    {
+        [Header("World")]
+        [SerializeField] int worldSeed = 839174;
+        [SerializeField] int chunkSize = 64;
+        [SerializeField, Range(1, 5)] int viewRadius = 2;
+        [SerializeField, Range(8, 64)] int verticesPerSide = 25;
+        [SerializeField] float terrainHeight = 5f;
+        [SerializeField] float noiseScale = 0.0065f;
+
+        [Header("Streaming")]
+        [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
+
+        Transform player;
+        Transform chunkRoot;
+        readonly Dictionary<Vector2Int, GameObject> loaded = new();
+        readonly Queue<Vector2Int> buildQueue = new();
+        readonly HashSet<Vector2Int> queued = new();
+        Vector2Int lastPlayerChunk = new(int.MinValue, int.MinValue);
+
+        public int WorldSeed => worldSeed;
+
+        public void Initialize(Transform target)
+        {
+            player = target;
+            chunkRoot = new GameObject("DREGFALL_StreamedWorld").transform;
+            transform.SetParent(chunkRoot);
+            Debug.Log($"[DREGFALL] Unlimited world initialized. Seed: {worldSeed}");
+            Refresh(true);
+            StartCoroutine(BuildQueuedChunks());
+        }
+
+        void Update()
+        {
+            if (player == null) return;
+            Vector2Int now = WorldToChunk(player.position);
+            if (now != lastPlayerChunk) Refresh(false);
+        }
+
+        void Refresh(bool immediateCenter)
+        {
+            Vector2Int center = WorldToChunk(player.position);
+            lastPlayerChunk = center;
+
+            var wanted = new HashSet<Vector2Int>();
+            for (int z = -viewRadius; z <= viewRadius; z++)
+            for (int x = -viewRadius; x <= viewRadius; x++)
+            {
+                Vector2Int coord = center + new Vector2Int(x, z);
+                wanted.Add(coord);
+                if (!loaded.ContainsKey(coord) && queued.Add(coord))
+                {
+                    if (immediateCenter && coord == center) BuildChunk(coord);
+                    else buildQueue.Enqueue(coord);
+                }
+            }
+
+            var remove = new List<Vector2Int>();
+            foreach (var pair in loaded)
+                if (!wanted.Contains(pair.Key)) remove.Add(pair.Key);
+
+            foreach (Vector2Int coord in remove)
+            {
+                Destroy(loaded[coord]);
+                loaded.Remove(coord);
+            }
+        }
+
+        IEnumerator BuildQueuedChunks()
+        {
+            while (true)
+            {
+                int budget = chunksBuiltPerFrame;
+                while (budget-- > 0 && buildQueue.Count > 0)
+                {
+                    Vector2Int coord = buildQueue.Dequeue();
+                    queued.Remove(coord);
+                    Vector2Int center = WorldToChunk(player.position);
+                    if (Mathf.Abs(coord.x - center.x) <= viewRadius &&
+                        Mathf.Abs(coord.y - center.y) <= viewRadius &&
+                        !loaded.ContainsKey(coord))
+                        BuildChunk(coord);
+                }
+                yield return null;
+            }
+        }
+
+        void BuildChunk(Vector2Int coord)
+        {
+            if (loaded.ContainsKey(coord)) return;
+
+            GameObject go = new GameObject($"Chunk_{coord.x}_{coord.y}");
+            go.transform.SetParent(chunkRoot, false);
+            go.transform.position = new Vector3(coord.x * chunkSize, 0f, coord.y * chunkSize);
+
+            Mesh mesh = GenerateMesh(coord);
+            var filter = go.AddComponent<MeshFilter>();
+            filter.sharedMesh = mesh;
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = GetPlainMaterial();
+            var collider = go.AddComponent<MeshCollider>();
+            collider.sharedMesh = mesh;
+
+            loaded.Add(coord, go);
+        }
+
+        Mesh GenerateMesh(Vector2Int coord)
+        {
+            int resolution = Mathf.Max(2, verticesPerSide);
+            int count = resolution * resolution;
+            var vertices = new Vector3[count];
+            var uvs = new Vector2[count];
+            var triangles = new int[(resolution - 1) * (resolution - 1) * 6];
+            float step = (float)chunkSize / (resolution - 1);
+
+            float seedX = HashSeed(worldSeed, 17) * 0.001f;
+            float seedZ = HashSeed(worldSeed, 53) * 0.001f;
+
+            for (int z = 0; z < resolution; z++)
+            for (int x = 0; x < resolution; x++)
+            {
+                float localX = x * step;
+                float localZ = z * step;
+                float worldX = coord.x * chunkSize + localX;
+                float worldZ = coord.y * chunkSize + localZ;
+                float h = SampleHeight(worldX, worldZ, seedX, seedZ);
+                int i = z * resolution + x;
+                vertices[i] = new Vector3(localX, h, localZ);
+                uvs[i] = new Vector2(worldX / chunkSize, worldZ / chunkSize);
+            }
+
+            int t = 0;
+            for (int z = 0; z < resolution - 1; z++)
+            for (int x = 0; x < resolution - 1; x++)
+            {
+                int i = z * resolution + x;
+                triangles[t++] = i;
+                triangles[t++] = i + resolution;
+                triangles[t++] = i + 1;
+                triangles[t++] = i + 1;
+                triangles[t++] = i + resolution;
+                triangles[t++] = i + resolution + 1;
+            }
+
+            var mesh = new Mesh { name = $"DREGFALL_Terrain_{coord.x}_{coord.y}" };
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+            mesh.uv = uvs;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        float SampleHeight(float x, float z, float sx, float sz)
+        {
+            float broad = Mathf.PerlinNoise(x * noiseScale + sx, z * noiseScale + sz);
+            float detail = Mathf.PerlinNoise(x * noiseScale * 2.35f + sx * 1.7f, z * noiseScale * 2.35f + sz * 1.7f);
+            return ((broad * 0.78f + detail * 0.22f) - 0.5f) * terrainHeight;
+        }
+
+        static int HashSeed(int seed, int salt)
+        {
+            unchecked
+            {
+                int h = seed ^ salt;
+                h = (h * 397) ^ (h >> 16);
+                return h & 0x7fffffff;
+            }
+        }
+
+        Vector2Int WorldToChunk(Vector3 position)
+        {
+            return new Vector2Int(
+                Mathf.FloorToInt(position.x / chunkSize),
+                Mathf.FloorToInt(position.z / chunkSize));
+        }
+
+        static Material plainMaterial;
+        static Material GetPlainMaterial()
+        {
+            if (plainMaterial != null) return plainMaterial;
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null) shader = Shader.Find("Standard");
+            plainMaterial = new Material(shader) { name = "DREGFALL_Phase2_PlainTerrain" };
+            plainMaterial.color = new Color(0.20f, 0.23f, 0.19f);
+            return plainMaterial;
+        }
+    }
+}
