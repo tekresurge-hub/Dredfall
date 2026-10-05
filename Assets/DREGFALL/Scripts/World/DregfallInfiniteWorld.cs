@@ -466,8 +466,8 @@ namespace Dregfall
             for (int i = 0; i <= segments; i++)
             {
                 float x = xMin + chunkSize * (i / (float)segments);
-                float meander = (Mathf.PerlinNoise(x * 0.0022f + sx, (zMin + chunkSize * 0.5f) * 0.00045f + sz) - 0.5f) * 105f;
-                float period = 420f;
+                float meander = (Mathf.PerlinNoise(x * 0.0022f + sx, sz) - 0.5f) * 72f;
+                float period = 180f;
                 float raw = Mathf.Repeat(-(meander + worldSeed * 0.071f), period);
                 float k = Mathf.Round((zMin + chunkSize * 0.5f - raw) / period);
                 float centerZ = raw + k * period;
@@ -480,15 +480,14 @@ namespace Dregfall
                 float t = i / (float)segments;
                 float worldX = xMin + chunkSize * t;
                 float sampleZ = zMin + chunkSize * 0.5f;
-                float meander = (Mathf.PerlinNoise(worldX * 0.0022f + sx, sampleZ * 0.00045f + sz) - 0.5f) * 105f;
-                float period = 420f;
+                float meander = (Mathf.PerlinNoise(worldX * 0.0022f + sx, sz) - 0.5f) * 72f;
+                float period = 180f;
                 float raw = Mathf.Repeat(-(meander + worldSeed * 0.071f), period);
                 float k = Mathf.Round((sampleZ - raw) / period);
                 float worldZ = raw + k * period;
 
-                float gate = Mathf.PerlinNoise(worldX * 0.00042f + sx * 1.7f, worldZ * 0.00042f + sz * 1.7f);
-                float width = Mathf.Lerp(1.25f, 2.4f, Mathf.PerlinNoise(worldX * 0.0014f + sx * 2.1f, worldZ * 0.0014f + sz * 2.1f));
-                if (gate < 0.46f) width = 0.08f;
+                // Keep the creek continuous and visible. Variation changes width, never deletes sections.
+                float width = Mathf.Lerp(1.45f, 2.35f, Mathf.PerlinNoise(worldX * 0.0014f + sx * 2.1f, worldZ * 0.0014f + sz * 2.1f));
 
                 float leftZ = worldZ - width;
                 float rightZ = worldZ + width;
