@@ -18,7 +18,8 @@ namespace Dregfall
             }
             cam.fieldOfView = 52f;
             cam.nearClipPlane = 0.1f;
-            cam.farClipPlane = 350f;
+            cam.farClipPlane = 420f;
+            DregfallVisualQuality.Apply(cam);
 
             GameObject player = new GameObject("DREGFALL_Survivor");
             player.transform.position = new Vector3(0f, 8f, 0f);
