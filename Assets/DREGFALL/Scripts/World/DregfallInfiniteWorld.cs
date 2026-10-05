@@ -197,7 +197,7 @@ namespace Dregfall
                 float slope = Mathf.Max(Mathf.Abs(hx - y), Mathf.Abs(hz - y)) / 1.5f;
                 if (slope > maxVegetationSlope) continue;
 
-                GameObject prefab = prefabs[rng.Next(prefabs.Length)];
+                GameObject prefab = PickRuntimeSafePrefab(prefabs, rng);
                 if (prefab == null) continue;
 
                 GameObject instance = Instantiate(prefab, parent);
@@ -214,6 +214,48 @@ namespace Dregfall
                     interactable.Configure("Tree", "A mature tree. It can be harvested with the right tool.", true);
                 }
             }
+        }
+
+        GameObject PickRuntimeSafePrefab(GameObject[] prefabs, System.Random rng)
+        {
+            if (prefabs == null || prefabs.Length == 0) return null;
+
+            int start = rng.Next(prefabs.Length);
+            for (int offset = 0; offset < prefabs.Length; offset++)
+            {
+                GameObject candidate = prefabs[(start + offset) % prefabs.Length];
+                if (candidate != null && IsRuntimeRenderable(candidate))
+                    return candidate;
+            }
+            return null;
+        }
+
+        static bool IsRuntimeRenderable(GameObject prefab)
+        {
+            Renderer[] renderers = prefab.GetComponentsInChildren<Renderer>(true);
+            if (renderers == null || renderers.Length == 0) return false;
+
+            bool hasRenderableMaterial = false;
+            foreach (Renderer renderer in renderers)
+            {
+                Material[] materials = renderer.sharedMaterials;
+                if (materials == null || materials.Length == 0) continue;
+
+                foreach (Material material in materials)
+                {
+                    if (material == null || material.shader == null || !material.shader.isSupported)
+                        return false;
+
+                    string shaderName = material.shader.name;
+                    if (shaderName == "Hidden/InternalErrorShader" ||
+                        shaderName.StartsWith("HDRP/", System.StringComparison.OrdinalIgnoreCase) ||
+                        shaderName.Contains("High Definition", System.StringComparison.OrdinalIgnoreCase))
+                        return false;
+
+                    hasRenderableMaterial = true;
+                }
+            }
+            return hasRenderableMaterial;
         }
 
         Mesh GenerateMesh(Vector2Int coord)
