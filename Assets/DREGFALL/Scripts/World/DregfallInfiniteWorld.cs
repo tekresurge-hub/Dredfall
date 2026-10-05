@@ -35,6 +35,11 @@ namespace Dregfall
         [SerializeField] float forestPatchScale = 0.0045f;
         [SerializeField] float clearingScale = 0.009f;
 
+        [Header("Phase 2D Waterways")]
+        [SerializeField, Range(0.8f, 5f)] float creekDepth = 1.8f;
+        [SerializeField, Range(0.5f, 4f)] float creekHalfWidth = 1.8f;
+        [SerializeField, Range(0f, 0.5f)] float pondFrequency = 0.12f;
+
         DregfallEnvironmentCatalog environmentCatalog;
         DregfallGrassFieldRenderer grassField;
         Transform player;
@@ -153,6 +158,7 @@ namespace Dregfall
 
             loaded.Add(coord, go);
             if (grassField != null) grassField.BuildChunk(coord);
+            BuildWaterSurface(coord, go.transform);
             PopulateWilderness(coord, go.transform);
         }
 
@@ -190,6 +196,8 @@ namespace Dregfall
                 float worldX = coord.x * chunkSize + 1f + (float)rng.NextDouble() * (chunkSize - 2f);
                 float worldZ = coord.y * chunkSize + 1f + (float)rng.NextDouble() * (chunkSize - 2f);
                 if (category != 3 && new Vector2(worldX, worldZ).sqrMagnitude < spawnClearingRadius * spawnClearingRadius) continue;
+                // Waterways own their banks. Keep trees, rocks and physical grass out of creek/pond footprints.
+                if (GetWaterMask(worldX, worldZ) > (category == 1 ? 0.42f : 0.25f)) continue;
 
                 float broad = GetWildernessDensity(new Vector3(worldX, 0f, worldZ));
                 float forest = Mathf.PerlinNoise(worldX * forestPatchScale + sx * 1.71f,
@@ -357,6 +365,27 @@ namespace Dregfall
             return mesh;
         }
 
+        public float GetWaterMask(float x, float z)
+        {
+            float sx = HashSeed(worldSeed, 211) * 0.001f;
+            float sz = HashSeed(worldSeed, 307) * 0.001f;
+
+            // Rare meandering creek corridors. The warp prevents straight/artificial channels.
+            float warp = (Mathf.PerlinNoise(x * 0.0017f + sx, z * 0.0017f + sz) - 0.5f) * 95f;
+            float wave = Mathf.Abs(Mathf.Sin((x + warp + worldSeed * 0.013f) * 0.0125f));
+            float creek = 1f - Mathf.SmoothStep(creekHalfWidth * 0.010f, creekHalfWidth * 0.038f, wave);
+            float regionGate = Mathf.PerlinNoise(x * 0.00055f + sx * 1.7f, z * 0.00055f + sz * 1.7f);
+            creek *= Mathf.SmoothStep(0.48f, 0.62f, regionGate);
+
+            // Small ponds/wet pockets are deliberately rare and broad enough to read naturally.
+            float pondNoise = Mathf.PerlinNoise(x * 0.0022f + sx * 3.1f, z * 0.0022f + sz * 3.1f);
+            float pondThreshold = Mathf.Lerp(0.84f, 0.76f, pondFrequency);
+            float pond = Mathf.SmoothStep(pondThreshold, pondThreshold + 0.055f, pondNoise);
+            return Mathf.Max(creek, pond);
+        }
+
+        public bool IsWater(float x, float z) => GetWaterMask(x, z) > 0.52f;
+
         public float SampleGroundHeight(float x, float z)
         {
             float sx = HashSeed(worldSeed, 17) * 0.001f;
@@ -386,7 +415,10 @@ namespace Dregfall
             float localAmplitude = Mathf.Lerp(terrainHeight * 1.45f, terrainHeight * 0.32f, flatness);
             localAmplitude *= Mathf.Lerp(0.75f, 1.25f, roughness);
 
-            return regionalShape + local * localAmplitude + detail * terrainHeight * 0.18f;
+            float baseHeight = regionalShape + local * localAmplitude + detail * terrainHeight * 0.18f;
+            float water = GetWaterMask(x, z);
+            // Shallow creek beds/pond depressions: enough relief to read as water without giant rivers.
+            return baseHeight - water * creekDepth;
         }
 
         public float GetSettlementSuitability(Vector3 worldPosition)
@@ -404,6 +436,60 @@ namespace Dregfall
             float sz = HashSeed(worldSeed, 131) * 0.001f;
             return Mathf.PerlinNoise(worldPosition.x * 0.0009f + sx,
                                      worldPosition.z * 0.0009f + sz);
+        }
+
+
+        void BuildWaterSurface(Vector2Int coord, Transform parent)
+        {
+            // Lightweight water patches share the terrain sampling grid, so they stream with each chunk.
+            int resolution = Mathf.Max(9, verticesPerSide);
+            float step = (float)chunkSize / (resolution - 1);
+            var vertices = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var triangles = new List<int>();
+
+            for (int z = 0; z < resolution - 1; z++)
+            for (int x = 0; x < resolution - 1; x++)
+            {
+                float wx = coord.x * chunkSize + (x + 0.5f) * step;
+                float wz = coord.y * chunkSize + (z + 0.5f) * step;
+                if (GetWaterMask(wx, wz) < 0.52f) continue;
+
+                float x0 = x * step, x1 = (x + 1) * step;
+                float z0 = z * step, z1 = (z + 1) * step;
+                float surface = SampleGroundHeight(wx, wz) + creekDepth * 0.72f;
+                int i = vertices.Count;
+                vertices.Add(new Vector3(x0, surface, z0));
+                vertices.Add(new Vector3(x1, surface, z0));
+                vertices.Add(new Vector3(x0, surface, z1));
+                vertices.Add(new Vector3(x1, surface, z1));
+                uvs.Add(new Vector2(0, 0)); uvs.Add(new Vector2(1, 0));
+                uvs.Add(new Vector2(0, 1)); uvs.Add(new Vector2(1, 1));
+                triangles.Add(i); triangles.Add(i + 2); triangles.Add(i + 1);
+                triangles.Add(i + 1); triangles.Add(i + 2); triangles.Add(i + 3);
+            }
+
+            if (vertices.Count == 0) return;
+            GameObject water = new GameObject("Waterway");
+            water.transform.SetParent(parent, false);
+            Mesh mesh = new Mesh { name = $"DREGFALL_Water_{coord.x}_{coord.y}" };
+            mesh.SetVertices(vertices); mesh.SetUVs(0, uvs); mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals(); mesh.RecalculateBounds();
+            water.AddComponent<MeshFilter>().sharedMesh = mesh;
+            water.AddComponent<MeshRenderer>().sharedMaterial = GetWaterMaterial();
+        }
+
+        static Material waterMaterial;
+        static Material GetWaterMaterial()
+        {
+            if (waterMaterial != null) return waterMaterial;
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null) shader = Shader.Find("Standard");
+            waterMaterial = new Material(shader) { name = "DREGFALL_Water" };
+            waterMaterial.color = new Color(0.075f, 0.18f, 0.16f, 0.82f);
+            waterMaterial.SetFloat("_Smoothness", 0.82f);
+            waterMaterial.SetFloat("_Metallic", 0f);
+            return waterMaterial;
         }
 
         static int HashSeed(int seed, int salt)
