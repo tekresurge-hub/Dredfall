@@ -51,6 +51,9 @@ namespace Dregfall
             player = target;
             chunkRoot = new GameObject("DREGFALL_StreamedWorld").transform;
             transform.SetParent(chunkRoot);
+            environmentCatalog = Resources.Load<DregfallEnvironmentCatalog>("DREGFALL_EnvironmentCatalog");
+            if (environmentCatalog == null)
+                Debug.LogWarning("[DREGFALL] Environment catalog not ready yet. Unity will generate it automatically in the Editor.");
             Debug.Log($"[DREGFALL] Unlimited world initialized. Seed: {worldSeed}");
             Refresh(true);
             StartCoroutine(BuildQueuedChunks());
