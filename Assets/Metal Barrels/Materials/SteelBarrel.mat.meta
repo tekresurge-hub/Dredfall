@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 7284c383ad0504d48a51ac0d481c94a3
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 221309
+  packageName: Ultra Realistic Metal Barrels with PBR Materials
+  packageVersion: 1.0
+  assetPath: Assets/Metal Barrels/Materials/SteelBarrel.mat
+  uploadId: 497410
