@@ -200,12 +200,6 @@ namespace Dregfall
                                                 worldZ * 0.0038f + sz * 5.3f);
 
                 float chance;
-                if (category == 3)
-                {
-                    // One shared driver updates these; the clumps themselves have no per-object Update.
-                    if (instance.GetComponent<DregfallInteractiveGrass>() == null)
-                        instance.AddComponent<DregfallInteractiveGrass>();
-                }
 
                 if (category == 0)
                 {
@@ -255,6 +249,13 @@ namespace Dregfall
                 instance.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
                 float scale = Mathf.Lerp(minScale, maxScale, (float)rng.NextDouble());
                 instance.transform.localScale *= scale;
+
+                if (category == 3)
+                {
+                    // Only the small nearby physical grass set receives interaction components.
+                    if (instance.GetComponent<DregfallInteractiveGrass>() == null)
+                        instance.AddComponent<DregfallInteractiveGrass>();
+                }
 
                 if (category == 0)
                 {
