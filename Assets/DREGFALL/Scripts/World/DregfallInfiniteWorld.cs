@@ -26,9 +26,9 @@ namespace Dregfall
 
         [Header("Phase 2C Wilderness")]
         [SerializeField, Range(0, 160)] int maxTreesPerChunk = 85;
-        [SerializeField, Range(900, 5200)] int denseGrassPerChunk = 3000;
-        [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 150;
-        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 340;
+        [SerializeField, Range(900, 5200)] int denseGrassPerChunk = 4200;
+        [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 210;
+        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 390;
         [SerializeField, Range(0, 40)] int maxRocksPerChunk = 18;
         [SerializeField] float maxVegetationSlope = 0.72f;
         [SerializeField] float spawnClearingRadius = 11f;
@@ -170,7 +170,7 @@ namespace Dregfall
             // Do not decide the whole chunk from one sample. Each candidate reads the continuous
             // world ecology maps so forests and clearings flow naturally across chunk boundaries.
             SpawnEcologicalCategory(environmentCatalog.trees, maxTreesPerChunk, coord, chunk, rng, 0, 0.78f, 1.24f);
-            SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 1.55f, 2.45f);
+            SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 1.75f, 2.70f);
             SpawnEcologicalCategory(environmentCatalog.undergrowth, maxUndergrowthPerChunk, coord, chunk, rng, 1, 0.55f, 1.35f);
             SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.55f, 1.55f);
         }
