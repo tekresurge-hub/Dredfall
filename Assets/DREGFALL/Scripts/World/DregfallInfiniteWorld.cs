@@ -25,10 +25,13 @@ namespace Dregfall
         [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
 
         [Header("Phase 2C Wilderness")]
-        [SerializeField, Range(0, 20)] int maxTreesPerChunk = 10;
-        [SerializeField, Range(0, 30)] int maxUndergrowthPerChunk = 14;
-        [SerializeField, Range(0, 6)] int maxRocksPerChunk = 2;
-        [SerializeField] float maxVegetationSlope = 0.55f;
+        [SerializeField, Range(0, 80)] int maxTreesPerChunk = 42;
+        [SerializeField, Range(0, 180)] int maxUndergrowthPerChunk = 110;
+        [SerializeField, Range(0, 24)] int maxRocksPerChunk = 9;
+        [SerializeField] float maxVegetationSlope = 0.72f;
+        [SerializeField] float spawnClearingRadius = 11f;
+        [SerializeField] float forestPatchScale = 0.0045f;
+        [SerializeField] float clearingScale = 0.009f;
 
         DregfallEnvironmentCatalog environmentCatalog;
         Transform player;
@@ -155,53 +158,64 @@ namespace Dregfall
             Vector3 center = new Vector3((coord.x + 0.5f) * chunkSize, 0f, (coord.y + 0.5f) * chunkSize);
 
             float broad = GetWildernessDensity(center);
-            float ecology = Mathf.PerlinNoise(
-                center.x * 0.0032f + HashSeed(worldSeed, 211) * 0.001f,
-                center.z * 0.0032f + HashSeed(worldSeed, 257) * 0.001f);
-            float forest = Mathf.SmoothStep(0.38f, 0.78f, broad);
-            float localGrowth = Mathf.SmoothStep(0.34f, 0.72f, ecology);
-            float growth = Mathf.Max(forest, localGrowth * 0.45f);
+            float forestRegion = Mathf.SmoothStep(0.30f, 0.74f, broad);
+            int trees = Mathf.RoundToInt(maxTreesPerChunk * Mathf.Lerp(0.12f, 1f, forestRegion));
+            int plants = Mathf.RoundToInt(maxUndergrowthPerChunk * Mathf.Lerp(0.18f, 1f, forestRegion));
+            int rocks = Mathf.RoundToInt(maxRocksPerChunk * Mathf.Lerp(0.35f, 1f, 1f - forestRegion * 0.35f));
 
-            int trees = Mathf.RoundToInt(maxTreesPerChunk * growth);
-            int plants = Mathf.RoundToInt(maxUndergrowthPerChunk * Mathf.Max(growth, localGrowth * 0.55f));
-            int rocks = Mathf.RoundToInt(maxRocksPerChunk * Mathf.Lerp(0.35f, 1f, broad));
-
-            // Runtime proving ground: the immediate spawn area must visibly demonstrate
-            // Phase 2C even when the broad seed happens to place spawn inside a clearing.
-            if (Mathf.Abs(coord.x) <= 1 && Mathf.Abs(coord.y) <= 1)
-            {
-                trees = Mathf.Max(trees, 4);
-                plants = Mathf.Max(plants, 5);
-                rocks = Mathf.Max(rocks, 1);
-            }
-
-            SpawnCategory(environmentCatalog.trees, trees, coord, chunk, rng, true, 0.88f, 1.12f);
-            SpawnCategory(environmentCatalog.undergrowth, plants, coord, chunk, rng, false, 0.8f, 1.25f);
-            SpawnCategory(environmentCatalog.rocks, rocks, coord, chunk, rng, false, 0.7f, 1.35f);
+            SpawnEcologicalCategory(environmentCatalog.trees, trees, coord, chunk, rng, true, 0.82f, 1.18f, 0.38f);
+            SpawnEcologicalCategory(environmentCatalog.undergrowth, plants, coord, chunk, rng, false, 0.65f, 1.25f, 0.20f);
+            SpawnEcologicalCategory(environmentCatalog.rocks, rocks, coord, chunk, rng, false, 0.65f, 1.45f, 0.12f);
         }
 
-        void SpawnCategory(GameObject[] prefabs, int count, Vector2Int coord, Transform parent,
-            System.Random rng, bool tree, float minScale, float maxScale)
+        void SpawnEcologicalCategory(GameObject[] prefabs, int targetCount, Vector2Int coord, Transform parent,
+            System.Random rng, bool tree, float minScale, float maxScale, float acceptanceFloor)
         {
-            if (prefabs == null || prefabs.Length == 0 || count <= 0) return;
+            if (prefabs == null || prefabs.Length == 0 || targetCount <= 0) return;
 
             float sx = HashSeed(worldSeed, 17) * 0.001f;
             float sz = HashSeed(worldSeed, 53) * 0.001f;
-            for (int i = 0; i < count; i++)
+            int spawned = 0;
+            int attempts = Mathf.Max(targetCount * 5, 24);
+
+            for (int attempt = 0; attempt < attempts && spawned < targetCount; attempt++)
             {
-                float worldX = coord.x * chunkSize + 3f + (float)rng.NextDouble() * (chunkSize - 6f);
-                float worldZ = coord.y * chunkSize + 3f + (float)rng.NextDouble() * (chunkSize - 6f);
+                float worldX = coord.x * chunkSize + 1.5f + (float)rng.NextDouble() * (chunkSize - 3f);
+                float worldZ = coord.y * chunkSize + 1.5f + (float)rng.NextDouble() * (chunkSize - 3f);
+
+                // Preserve a small readable start area, but let the rest of the world become genuinely busy.
+                if (new Vector2(worldX, worldZ).sqrMagnitude < spawnClearingRadius * spawnClearingRadius)
+                    continue;
+
+                float patch = Mathf.PerlinNoise(worldX * forestPatchScale + sx * 1.71f,
+                                                worldZ * forestPatchScale + sz * 1.71f);
+                float clearing = Mathf.PerlinNoise(worldX * clearingScale + sx * 3.17f,
+                                                   worldZ * clearingScale + sz * 3.17f);
+                float broad = GetWildernessDensity(new Vector3(worldX, 0f, worldZ));
+
+                // Trees strongly cluster into forests. Undergrowth spills beyond tree lines and fills forest floors.
+                float suitability = tree
+                    ? broad * 0.52f + patch * 0.48f
+                    : broad * 0.34f + patch * 0.42f + clearing * 0.24f;
+
+                // Coherent holes produce glades instead of evenly-spaced procedural noise.
+                float glade = Mathf.PerlinNoise(worldX * 0.0062f + sx * 5.3f,
+                                                worldZ * 0.0062f + sz * 5.3f);
+                if (glade > 0.73f && tree) suitability *= 0.28f;
+                if (suitability < acceptanceFloor + (float)rng.NextDouble() * 0.42f) continue;
+
                 float y = SampleHeight(worldX, worldZ, sx, sz);
                 float hx = SampleHeight(worldX + 1.5f, worldZ, sx, sz);
                 float hz = SampleHeight(worldX, worldZ + 1.5f, sx, sz);
                 float slope = Mathf.Max(Mathf.Abs(hx - y), Mathf.Abs(hz - y)) / 1.5f;
-                if (slope > maxVegetationSlope) continue;
+                float allowedSlope = tree ? maxVegetationSlope : maxVegetationSlope * 1.12f;
+                if (slope > allowedSlope) continue;
 
                 GameObject prefab = PickRuntimeSafePrefab(prefabs, rng);
                 if (prefab == null) continue;
 
                 GameObject instance = Instantiate(prefab, parent);
-                instance.name = $"Wild_{prefab.name}_{i}";
+                instance.name = $"Wild_{prefab.name}_{spawned}";
                 instance.transform.position = new Vector3(worldX, y, worldZ);
                 instance.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
                 float scale = Mathf.Lerp(minScale, maxScale, (float)rng.NextDouble());
@@ -213,6 +227,7 @@ namespace Dregfall
                     if (interactable == null) interactable = instance.AddComponent<DregfallInteractable>();
                     interactable.Configure("Tree", "A mature tree. It can be harvested with the right tool.", true);
                 }
+                spawned++;
             }
         }
 
