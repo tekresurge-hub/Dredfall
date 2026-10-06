@@ -121,9 +121,9 @@ namespace Dregfall
 
                 int variant = rng.Next(variants.Count);
                 float heightNoise = Mathf.PerlinNoise(x * 0.035f + 9.2f, z * 0.035f + 17.8f);
-                float height = Mathf.Lerp(0.72f, 1.28f,
+                float height = Mathf.Lerp(0.82f, 1.18f,
                     Mathf.Clamp01(heightNoise * 0.72f + (float)rng.NextDouble() * 0.28f));
-                float width = Mathf.Lerp(0.70f, 1.08f, (float)rng.NextDouble());
+                float width = Mathf.Lerp(0.82f, 1.04f, (float)rng.NextDouble());
                 Quaternion rotation = Quaternion.Euler(
                     Mathf.Lerp(-2.5f, 2.5f, (float)rng.NextDouble()),
                     (float)rng.NextDouble() * 360f,
@@ -145,7 +145,7 @@ namespace Dregfall
             if (variants.Count == 0 || player == null) return;
 
             // Dense blades are only worth drawing close to the survivor. Distant terrain relies on its ground material.
-            float renderDistance = world.ChunkSize * 0.82f;
+            float renderDistance = world.ChunkSize * 0.72f;
             float renderDistanceSqr = renderDistance * renderDistance;
             Vector3 playerPos = player.position;
 
