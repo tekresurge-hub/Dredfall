@@ -25,11 +25,11 @@ namespace Dregfall
         [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
 
         [Header("Phase 2C Wilderness")]
-        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 32;
+        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 38;
         [SerializeField, Range(350, 2200)] int denseGrassPerChunk = 900;
         [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 18;
-        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 68;
-        [SerializeField, Range(0, 40)] int maxRocksPerChunk = 7;
+        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 82;
+        [SerializeField, Range(0, 40)] int maxRocksPerChunk = 5;
         [SerializeField] float maxVegetationSlope = 0.72f;
         [SerializeField] float spawnClearingRadius = 11f;
         [SerializeField] float forestPatchScale = 0.0045f;
@@ -188,10 +188,10 @@ namespace Dregfall
 
             // Do not decide the whole chunk from one sample. Each candidate reads the continuous
             // world ecology maps so forests and clearings flow naturally across chunk boundaries.
-            SpawnEcologicalCategory(environmentCatalog.trees, maxTreesPerChunk, coord, chunk, rng, 0, 0.92f, 1.08f);
+            SpawnEcologicalCategory(environmentCatalog.trees, maxTreesPerChunk, coord, chunk, rng, 0, 0.86f, 1.16f);
             SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 0.88f, 1.08f);
-            SpawnEcologicalCategory(environmentCatalog.undergrowth, maxUndergrowthPerChunk, coord, chunk, rng, 1, 0.82f, 1.12f);
-            SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.82f, 1.18f);
+            SpawnEcologicalCategory(environmentCatalog.undergrowth, maxUndergrowthPerChunk, coord, chunk, rng, 1, 0.72f, 1.22f);
+            SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.72f, 1.08f);
         }
 
         void SpawnEcologicalCategory(GameObject[] prefabs, int targetCount, Vector2Int coord, Transform parent,
@@ -276,10 +276,11 @@ namespace Dregfall
                 float yaw = (float)rng.NextDouble() * 360f;
                 float pitch = category == 2 ? Mathf.Lerp(-7f, 7f, (float)rng.NextDouble()) : 0f;
                 float roll = category == 2 ? Mathf.Lerp(-7f, 7f, (float)rng.NextDouble()) : 0f;
-                float groundSink = category == 2 ? Mathf.Lerp(0.05f, 0.18f, (float)rng.NextDouble()) : 0f;
+                float groundSink = category == 2 ? Mathf.Lerp(0.12f, 0.34f, (float)rng.NextDouble()) : 0f;
                 instance.transform.position = new Vector3(worldX, y - groundSink, worldZ);
                 instance.transform.rotation = Quaternion.Euler(pitch, yaw, roll);
-                float scale = Mathf.Lerp(minScale, maxScale, (float)rng.NextDouble());
+                float scaleNoise = Mathf.PerlinNoise(worldX * 0.021f + category * 13.7f, worldZ * 0.021f + category * 29.1f);
+                float scale = Mathf.Lerp(minScale, maxScale, Mathf.Clamp01(scaleNoise * 0.62f + (float)rng.NextDouble() * 0.38f));
                 instance.transform.localScale *= scale;
 
                 // Runtime vegetation budget: preserve detailed assets near the survivor,
