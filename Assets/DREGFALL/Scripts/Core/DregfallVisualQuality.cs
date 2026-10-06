@@ -11,10 +11,10 @@ namespace Dregfall
         {
             QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
             QualitySettings.globalTextureMipmapLimit = 0;
-            QualitySettings.lodBias = 1.15f;
+            QualitySettings.lodBias = 1.35f;
             QualitySettings.maximumLODLevel = 0;
-            QualitySettings.shadowDistance = 38f;
-            QualitySettings.shadowResolution = UnityEngine.ShadowResolution.Medium;
+            QualitySettings.shadowDistance = 46f;
+            QualitySettings.shadowResolution = UnityEngine.ShadowResolution.High;
             QualitySettings.shadows = UnityEngine.ShadowQuality.All;
             QualitySettings.softParticles = true;
             QualitySettings.realtimeReflectionProbes = false;
@@ -35,10 +35,10 @@ namespace Dregfall
             }
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.255f, 0.285f, 0.255f);
-            RenderSettings.ambientEquatorColor = new Color(0.145f, 0.165f, 0.14f);
-            RenderSettings.ambientGroundColor = new Color(0.065f, 0.06f, 0.05f);
-            RenderSettings.ambientIntensity = 0.68f;
+            RenderSettings.ambientSkyColor = new Color(0.205f, 0.225f, 0.205f);
+            RenderSettings.ambientEquatorColor = new Color(0.115f, 0.13f, 0.11f);
+            RenderSettings.ambientGroundColor = new Color(0.052f, 0.047f, 0.039f);
+            RenderSettings.ambientIntensity = 0.58f;
 
             Light sun = RenderSettings.sun;
             if (sun == null)
@@ -52,8 +52,8 @@ namespace Dregfall
             {
                 RenderSettings.sun = sun;
                 sun.shadows = LightShadows.Soft;
-                sun.shadowStrength = 0.72f;
-                sun.intensity = 0.92f;
+                sun.shadowStrength = 0.82f;
+                sun.intensity = 1.05f;
                 sun.color = new Color(1.0f, 0.965f, 0.90f);
                 sun.transform.rotation = Quaternion.Euler(48f, -32f, 0f);
             }
