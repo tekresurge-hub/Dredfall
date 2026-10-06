@@ -79,7 +79,7 @@ namespace Dregfall
                 if (mainTexture != null)
                 {
                     mainTexture.filterMode = FilterMode.Trilinear;
-                    mainTexture.anisoLevel = 12;
+                    mainTexture.anisoLevel = 16;
                 }
 
                 variants.Add(new GrassVariant { mesh = mf.sharedMesh, material = mat });
@@ -100,20 +100,17 @@ namespace Dregfall
                 float x = coord.x * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
                 float z = coord.y * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
                 float ecology = world.GetWildernessDensity(new Vector3(x, 0f, z));
-                // Dense GPU grass also respects streamed waterways; banks remain readable.
-                float waterMask = world.GetWaterMask(x, z);
-                if (waterMask > 0.18f) continue;
                 float patch = Mathf.PerlinNoise(x * 0.026f + 31.7f, z * 0.026f + 73.1f);
                 float meadow = Mathf.PerlinNoise(x * 0.0045f + 119.3f, z * 0.0045f + 211.9f);
                 float trail = Mathf.PerlinNoise(x * 0.012f + 317.2f, z * 0.012f + 89.4f);
 
                 // Thick living carpet. Soil is exposed only in coherent clearing/trail pockets.
-                float keep = Mathf.Clamp01(0.63f + ecology * 0.17f + patch * 0.15f + meadow * 0.10f);
+                float keep = Mathf.Clamp01(0.56f + ecology * 0.15f + patch * 0.16f + meadow * 0.09f);
                 // Forest-floor grass fades naturally in the deepest canopy instead of creating a uniform lawn.
                 float canopy = Mathf.PerlinNoise(x * 0.0045f + 66.1f, z * 0.0045f + 14.7f);
                 if (canopy > 0.74f && ecology > 0.58f) keep *= Mathf.Lerp(0.68f, 0.88f, patch);
-                if (trail > 0.86f && meadow < 0.48f) keep *= 0.28f;
-                if (patch < 0.22f) keep *= 0.35f;
+                if (trail > 0.82f && meadow < 0.52f) keep *= 0.18f;
+                if (patch < 0.26f) keep *= 0.22f;
                 if ((float)rng.NextDouble() > keep) continue;
 
                 float y = world.SampleGroundHeight(x, z);
