@@ -153,6 +153,17 @@ namespace Dregfall
             filter.sharedMesh = mesh;
             var renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = GetGroundMaterial();
+            // Break the obvious repeated "brown carpet" look without adding extra GameObjects.
+            // Each deterministic chunk gets a subtle material tint while the texture remains shared.
+            var groundBlock = new MaterialPropertyBlock();
+            float groundVariation = Mathf.PerlinNoise(coord.x * 0.173f + 41.7f, coord.y * 0.173f + 93.1f);
+            float dampVariation = Mathf.PerlinNoise(coord.x * 0.071f + 121.3f, coord.y * 0.071f + 17.9f);
+            Color drySoil = new Color(0.34f, 0.30f, 0.22f, 1f);
+            Color mossSoil = new Color(0.24f, 0.29f, 0.20f, 1f);
+            Color groundTint = Color.Lerp(drySoil, mossSoil, Mathf.Clamp01(groundVariation * 0.72f + dampVariation * 0.28f));
+            groundBlock.SetColor("_BaseColor", groundTint);
+            groundBlock.SetColor("_Color", groundTint);
+            renderer.SetPropertyBlock(groundBlock);
             var collider = go.AddComponent<MeshCollider>();
             collider.sharedMesh = mesh;
 
@@ -583,11 +594,13 @@ namespace Dregfall
             {
                 groundMaterial = new Material(source) { name = "DREGFALL_GroundRuntime" };
                 groundMaterial.enableInstancing = true;
-                groundMaterial.SetFloat("_Smoothness", 0.03f);
+                groundMaterial.SetFloat("_Smoothness", 0.02f);
+                // Smaller texture scale removes the stretched/muddy appearance from the elevated camera.
+                groundMaterial.mainTextureScale = new Vector2(5.5f, 5.5f);
                 if (groundMaterial.mainTexture != null)
                 {
                     groundMaterial.mainTexture.filterMode = FilterMode.Trilinear;
-                    groundMaterial.mainTexture.anisoLevel = 8;
+                    groundMaterial.mainTexture.anisoLevel = 12;
                 }
                 return groundMaterial;
             }
