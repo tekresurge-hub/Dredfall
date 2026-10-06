@@ -25,10 +25,10 @@ namespace Dregfall
         [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
 
         [Header("Phase 2C Wilderness")]
-        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 34;
-        [SerializeField, Range(350, 2200)] int denseGrassPerChunk = 980;
+        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 42;
+        [SerializeField, Range(350, 2200)] int denseGrassPerChunk = 1080;
         [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 18;
-        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 104;
+        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 132;
         [SerializeField, Range(0, 40)] int maxRocksPerChunk = 2;
         [SerializeField] float maxVegetationSlope = 0.72f;
         [SerializeField] float spawnClearingRadius = 11f;
@@ -158,8 +158,8 @@ namespace Dregfall
             var groundBlock = new MaterialPropertyBlock();
             float groundVariation = Mathf.PerlinNoise(coord.x * 0.173f + 41.7f, coord.y * 0.173f + 93.1f);
             float dampVariation = Mathf.PerlinNoise(coord.x * 0.071f + 121.3f, coord.y * 0.071f + 17.9f);
-            Color drySoil = new Color(0.205f, 0.185f, 0.145f, 1f);
-            Color mossSoil = new Color(0.125f, 0.165f, 0.105f, 1f);
+            Color drySoil = new Color(0.18f, 0.165f, 0.125f, 1f);
+            Color mossSoil = new Color(0.105f, 0.14f, 0.085f, 1f);
             Color groundTint = Color.Lerp(drySoil, mossSoil, Mathf.Clamp01(groundVariation * 0.72f + dampVariation * 0.28f));
             groundBlock.SetColor("_BaseColor", groundTint);
             groundBlock.SetColor("_Color", groundTint);
@@ -188,7 +188,7 @@ namespace Dregfall
 
             // Do not decide the whole chunk from one sample. Each candidate reads the continuous
             // world ecology maps so forests and clearings flow naturally across chunk boundaries.
-            SpawnEcologicalCategory(environmentCatalog.trees, maxTreesPerChunk, coord, chunk, rng, 0, 0.92f, 1.08f);
+            SpawnEcologicalCategory(environmentCatalog.trees, maxTreesPerChunk, coord, chunk, rng, 0, 0.88f, 1.14f);
             SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 0.88f, 1.08f);
             SpawnEcologicalCategory(environmentCatalog.undergrowth, maxUndergrowthPerChunk, coord, chunk, rng, 1, 0.68f, 1.16f);
             SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.48f, 0.78f);
@@ -597,7 +597,7 @@ namespace Dregfall
                 groundMaterial.enableInstancing = true;
                 groundMaterial.SetFloat("_Smoothness", 0.015f);
                 // Smaller texture scale removes the stretched/muddy appearance from the elevated camera.
-                groundMaterial.mainTextureScale = new Vector2(8.5f, 8.5f);
+                groundMaterial.mainTextureScale = new Vector2(11f, 11f);
                 if (groundMaterial.mainTexture != null)
                 {
                     groundMaterial.mainTexture.filterMode = FilterMode.Trilinear;
