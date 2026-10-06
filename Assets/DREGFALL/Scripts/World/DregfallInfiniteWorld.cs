@@ -10,7 +10,7 @@ namespace Dregfall
         [SerializeField] int worldSeed = 839174;
         [SerializeField] int chunkSize = 64;
         [SerializeField, Range(1, 5)] int viewRadius = 2;
-        [SerializeField, Range(8, 64)] int verticesPerSide = 25;
+        [SerializeField, Range(8, 64)] int verticesPerSide = 33;
         [SerializeField] float terrainHeight = 5f;
         [SerializeField] float noiseScale = 0.0065f;
 
@@ -158,8 +158,8 @@ namespace Dregfall
             var groundBlock = new MaterialPropertyBlock();
             float groundVariation = Mathf.PerlinNoise(coord.x * 0.173f + 41.7f, coord.y * 0.173f + 93.1f);
             float dampVariation = Mathf.PerlinNoise(coord.x * 0.071f + 121.3f, coord.y * 0.071f + 17.9f);
-            Color drySoil = new Color(0.34f, 0.30f, 0.22f, 1f);
-            Color mossSoil = new Color(0.24f, 0.29f, 0.20f, 1f);
+            Color drySoil = new Color(0.245f, 0.215f, 0.155f, 1f);
+            Color mossSoil = new Color(0.155f, 0.205f, 0.125f, 1f);
             Color groundTint = Color.Lerp(drySoil, mossSoil, Mathf.Clamp01(groundVariation * 0.72f + dampVariation * 0.28f));
             groundBlock.SetColor("_BaseColor", groundTint);
             groundBlock.SetColor("_Color", groundTint);
@@ -595,13 +595,13 @@ namespace Dregfall
             {
                 groundMaterial = new Material(source) { name = "DREGFALL_GroundRuntime" };
                 groundMaterial.enableInstancing = true;
-                groundMaterial.SetFloat("_Smoothness", 0.02f);
+                groundMaterial.SetFloat("_Smoothness", 0.015f);
                 // Smaller texture scale removes the stretched/muddy appearance from the elevated camera.
-                groundMaterial.mainTextureScale = new Vector2(5.5f, 5.5f);
+                groundMaterial.mainTextureScale = new Vector2(8.5f, 8.5f);
                 if (groundMaterial.mainTexture != null)
                 {
                     groundMaterial.mainTexture.filterMode = FilterMode.Trilinear;
-                    groundMaterial.mainTexture.anisoLevel = 12;
+                    groundMaterial.mainTexture.anisoLevel = 16;
                 }
                 return groundMaterial;
             }
