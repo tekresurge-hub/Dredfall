@@ -11,9 +11,9 @@ namespace Dregfall
         {
             QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
             QualitySettings.globalTextureMipmapLimit = 0;
-            QualitySettings.lodBias = 1.45f;
+            QualitySettings.lodBias = 1.15f;
             QualitySettings.maximumLODLevel = 0;
-            QualitySettings.shadowDistance = 58f;
+            QualitySettings.shadowDistance = 38f;
             QualitySettings.shadowResolution = UnityEngine.ShadowResolution.Medium;
             QualitySettings.shadows = UnityEngine.ShadowQuality.All;
             QualitySettings.softParticles = true;
@@ -23,7 +23,7 @@ namespace Dregfall
             {
                 camera.allowHDR = true;
                 camera.allowMSAA = true;
-                camera.farClipPlane = Mathf.Max(camera.farClipPlane, 420f);
+                camera.farClipPlane = 260f;
                 camera.backgroundColor = new Color(0.055f, 0.065f, 0.065f);
 
                 // URP has its own post AA setting. SMAA is much better suited to the
@@ -35,10 +35,10 @@ namespace Dregfall
             }
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.34f, 0.37f, 0.34f);
-            RenderSettings.ambientEquatorColor = new Color(0.19f, 0.21f, 0.18f);
-            RenderSettings.ambientGroundColor = new Color(0.085f, 0.075f, 0.06f);
-            RenderSettings.ambientIntensity = 0.82f;
+            RenderSettings.ambientSkyColor = new Color(0.255f, 0.285f, 0.255f);
+            RenderSettings.ambientEquatorColor = new Color(0.145f, 0.165f, 0.14f);
+            RenderSettings.ambientGroundColor = new Color(0.065f, 0.06f, 0.05f);
+            RenderSettings.ambientIntensity = 0.68f;
 
             Light sun = RenderSettings.sun;
             if (sun == null)
@@ -52,9 +52,9 @@ namespace Dregfall
             {
                 RenderSettings.sun = sun;
                 sun.shadows = LightShadows.Soft;
-                sun.shadowStrength = 0.82f;
-                sun.intensity = 1.05f;
-                sun.color = new Color(1.0f, 0.94f, 0.84f);
+                sun.shadowStrength = 0.72f;
+                sun.intensity = 0.92f;
+                sun.color = new Color(1.0f, 0.965f, 0.90f);
                 sun.transform.rotation = Quaternion.Euler(48f, -32f, 0f);
             }
         }
