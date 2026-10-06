@@ -177,10 +177,10 @@ namespace Dregfall
 
             // Do not decide the whole chunk from one sample. Each candidate reads the continuous
             // world ecology maps so forests and clearings flow naturally across chunk boundaries.
-            SpawnEcologicalCategory(environmentCatalog.trees, maxTreesPerChunk, coord, chunk, rng, 0, 0.78f, 1.24f);
-            SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 0.72f, 1.18f);
-            SpawnEcologicalCategory(environmentCatalog.undergrowth, maxUndergrowthPerChunk, coord, chunk, rng, 1, 0.55f, 1.35f);
-            SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.55f, 1.55f);
+            SpawnEcologicalCategory(environmentCatalog.trees, maxTreesPerChunk, coord, chunk, rng, 0, 0.92f, 1.08f);
+            SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 0.88f, 1.08f);
+            SpawnEcologicalCategory(environmentCatalog.undergrowth, maxUndergrowthPerChunk, coord, chunk, rng, 1, 0.82f, 1.12f);
+            SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.82f, 1.18f);
         }
 
         void SpawnEcologicalCategory(GameObject[] prefabs, int targetCount, Vector2Int coord, Transform parent,
@@ -259,6 +259,28 @@ namespace Dregfall
                 instance.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
                 float scale = Mathf.Lerp(minScale, maxScale, (float)rng.NextDouble());
                 instance.transform.localScale *= scale;
+
+                // Runtime vegetation budget: preserve detailed assets near the survivor,
+                // but do not pay full shadow/detail cost for every prefab in all 25 loaded chunks.
+                Renderer[] instanceRenderers = instance.GetComponentsInChildren<Renderer>(true);
+                foreach (Renderer r in instanceRenderers)
+                {
+                    if (r == null) continue;
+                    r.allowOcclusionWhenDynamic = true;
+
+                    if (category == 0)
+                    {
+                        // Trees keep silhouettes/shadows, but cull before the outer streamed world edge.
+                        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                        r.receiveShadows = true;
+                    }
+                    else
+                    {
+                        // Tiny foliage/rocks don't need expensive individual real-time shadows.
+                        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                        r.receiveShadows = true;
+                    }
+                }
 
                 if (category == 3)
                 {
@@ -548,7 +570,14 @@ namespace Dregfall
             Material source = Resources.Load<Material>("DREGFALL_GroundMaterial");
             if (source != null)
             {
-                groundMaterial = source;
+                groundMaterial = new Material(source) { name = "DREGFALL_GroundRuntime" };
+                groundMaterial.enableInstancing = true;
+                groundMaterial.SetFloat("_Smoothness", 0.03f);
+                if (groundMaterial.mainTexture != null)
+                {
+                    groundMaterial.mainTexture.filterMode = FilterMode.Trilinear;
+                    groundMaterial.mainTexture.anisoLevel = 8;
+                }
                 return groundMaterial;
             }
 
