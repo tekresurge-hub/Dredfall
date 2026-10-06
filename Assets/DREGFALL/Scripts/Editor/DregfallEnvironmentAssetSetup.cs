@@ -49,9 +49,7 @@ namespace Dregfall.Editor
                 "Assets/Realistic Tree/Prefabs/Standard/Birch/Birch 6.prefab",
                 "Assets/Realistic Tree/Prefabs/Standard/Chestnut/Chestnut 3.prefab",
                 "Assets/Realistic Tree/Prefabs/Standard/Spruce/Spruce 3.prefab",
-                "Assets/Realistic Tree/Prefabs/Standard/Spruce/Spruce 7.prefab",
-                "Assets/Flora-Form/Vegetation/Pine_002_M.prefab",
-                "Assets/Flora-Form/Vegetation/Pine_002_M2.prefab"
+                "Assets/Realistic Tree/Prefabs/Standard/Spruce/Spruce 7.prefab"
             });
 
             catalog.grass = LoadPrefabs(new[]
@@ -195,7 +193,9 @@ namespace Dregfall.Editor
                         n.Contains("bush") || n.Contains("grass") || n.Contains("pine"))
                     {
                         material.SetFloat("_AlphaClip", 1f);
-                        material.SetFloat("_Cutoff", 0.35f);
+                        material.SetFloat("_Cutoff", 0.42f);
+                        material.SetFloat("_Smoothness", 0.08f);
+                        material.SetFloat("_Metallic", 0f);
                         material.EnableKeyword("_ALPHATEST_ON");
                         material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
                     }
