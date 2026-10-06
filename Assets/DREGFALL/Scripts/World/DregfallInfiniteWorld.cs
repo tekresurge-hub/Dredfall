@@ -25,11 +25,11 @@ namespace Dregfall
         [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
 
         [Header("Phase 2C Wilderness")]
-        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 24;
+        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 32;
         [SerializeField, Range(350, 2200)] int denseGrassPerChunk = 900;
         [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 18;
-        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 52;
-        [SerializeField, Range(0, 40)] int maxRocksPerChunk = 5;
+        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 68;
+        [SerializeField, Range(0, 40)] int maxRocksPerChunk = 7;
         [SerializeField] float maxVegetationSlope = 0.72f;
         [SerializeField] float spawnClearingRadius = 11f;
         [SerializeField] float forestPatchScale = 0.0045f;
@@ -211,33 +211,40 @@ namespace Dregfall
 
                 float chance;
 
+                // Coherent biome mask. Forest cores become recognisably dense, edges feather out,
+                // and broad glades remain readable instead of every chunk looking equally scattered.
+                float forestCore = Mathf.SmoothStep(0.48f, 0.76f, forest);
+                float deepForest = Mathf.SmoothStep(0.63f, 0.88f, forest) * Mathf.Lerp(0.55f, 1f, broad);
+                float clearing = Mathf.SmoothStep(0.68f, 0.86f, glade);
+                float edge = 1f - Mathf.Abs(forestCore * 2f - 1f);
+
                 if (category == 0)
                 {
-                    // Big and small forests: dense cores, feathered edges, occasional open glades.
-                    chance = Mathf.Clamp01(0.16f + broad * 0.38f + forest * 0.58f);
-                    if (glade > 0.72f) chance *= 0.20f;
+                    chance = Mathf.Lerp(0.08f, 0.94f, forestCore);
+                    chance *= Mathf.Lerp(0.38f, 1f, broad);
+                    chance *= Mathf.Lerp(1f, 0.10f, clearing);
                 }
                 else if (category == 1)
                 {
-                    // Forest floor should stay visually busy even around clearings and tree lines.
-                    chance = Mathf.Clamp01(0.48f + broad * 0.20f + forest * 0.22f + local * 0.18f);
-                    if (glade > 0.78f) chance *= 0.65f;
+                    // Bushes/ground plants favour forest edges and pockets beneath trees.
+                    chance = Mathf.Clamp01(0.34f + forestCore * 0.28f + edge * 0.28f + local * 0.16f);
+                    chance *= Mathf.Lerp(1f, 0.58f, clearing);
                 }
                 else if (category == 3)
                 {
-                    // Grass is the living carpet. Keep it thick through forests and especially clearings,
-                    // but preserve occasional soil pockets so the terrain still has natural variation.
-                    chance = Mathf.Clamp01(0.72f + broad * 0.12f + local * 0.14f);
-                    if (forest > 0.82f) chance *= 0.88f;
-                    if (glade > 0.72f) chance = Mathf.Min(1f, chance + 0.08f);
+                    // Interactive grass is only the small physical subset; dense visual grass is GPU rendered.
+                    chance = Mathf.Clamp01(0.70f + local * 0.16f + clearing * 0.10f - deepForest * 0.10f);
                     float soilPocket = Mathf.PerlinNoise(worldX * 0.018f + sx * 7.1f,
                                                          worldZ * 0.018f + sz * 7.1f);
-                    if (soilPocket > 0.84f) chance *= 0.18f;
+                    if (soilPocket > 0.86f) chance *= 0.24f;
                 }
                 else
                 {
-                    // Rocks occur throughout the landscape, with modest clustering.
-                    chance = Mathf.Clamp01(0.30f + (1f - broad) * 0.20f + local * 0.22f);
+                    // Rocks form occasional coherent groups, especially outside the deepest forest.
+                    float rockCluster = Mathf.PerlinNoise(worldX * 0.0068f + sx * 9.7f,
+                                                          worldZ * 0.0068f + sz * 9.7f);
+                    chance = Mathf.Clamp01(0.12f + rockCluster * 0.42f + (1f - forestCore) * 0.14f);
+                    if (rockCluster < 0.43f) chance *= 0.22f;
                 }
 
                 if ((float)rng.NextDouble() > chance) continue;
@@ -255,8 +262,12 @@ namespace Dregfall
                 GameObject instance = Instantiate(prefab, parent);
                 string prefix = category == 0 ? "Tree" : category == 1 ? "GroundPlant" : category == 3 ? "Grass" : "Rock";
                 instance.name = $"Wild_{prefix}_{prefab.name}_{spawned}";
-                instance.transform.position = new Vector3(worldX, y, worldZ);
-                instance.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
+                float yaw = (float)rng.NextDouble() * 360f;
+                float pitch = category == 2 ? Mathf.Lerp(-7f, 7f, (float)rng.NextDouble()) : 0f;
+                float roll = category == 2 ? Mathf.Lerp(-7f, 7f, (float)rng.NextDouble()) : 0f;
+                float groundSink = category == 2 ? Mathf.Lerp(0.05f, 0.18f, (float)rng.NextDouble()) : 0f;
+                instance.transform.position = new Vector3(worldX, y - groundSink, worldZ);
+                instance.transform.rotation = Quaternion.Euler(pitch, yaw, roll);
                 float scale = Mathf.Lerp(minScale, maxScale, (float)rng.NextDouble());
                 instance.transform.localScale *= scale;
 
