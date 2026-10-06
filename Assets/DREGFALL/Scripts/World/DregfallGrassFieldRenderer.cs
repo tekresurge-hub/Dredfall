@@ -94,7 +94,7 @@ namespace Dregfall
             var rng = new System.Random(seed);
             GrassChunk data = new GrassChunk(variants.Count);
 
-            int carpetCount = Mathf.RoundToInt(grassPerChunk * 0.76f);
+            int carpetCount = Mathf.RoundToInt(grassPerChunk * 0.82f);
             for (int i = 0; i < carpetCount; i++)
             {
                 float x = coord.x * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
@@ -108,10 +108,10 @@ namespace Dregfall
                 float trail = Mathf.PerlinNoise(x * 0.012f + 317.2f, z * 0.012f + 89.4f);
 
                 // Thick living carpet. Soil is exposed only in coherent clearing/trail pockets.
-                float keep = Mathf.Clamp01(0.58f + ecology * 0.18f + patch * 0.18f + meadow * 0.12f);
+                float keep = Mathf.Clamp01(0.63f + ecology * 0.17f + patch * 0.15f + meadow * 0.10f);
                 // Forest-floor grass fades naturally in the deepest canopy instead of creating a uniform lawn.
                 float canopy = Mathf.PerlinNoise(x * 0.0045f + 66.1f, z * 0.0045f + 14.7f);
-                if (canopy > 0.74f && ecology > 0.58f) keep *= Mathf.Lerp(0.58f, 0.82f, patch);
+                if (canopy > 0.74f && ecology > 0.58f) keep *= Mathf.Lerp(0.68f, 0.88f, patch);
                 if (trail > 0.86f && meadow < 0.48f) keep *= 0.28f;
                 if (patch < 0.22f) keep *= 0.35f;
                 if ((float)rng.NextDouble() > keep) continue;
@@ -148,7 +148,7 @@ namespace Dregfall
             if (variants.Count == 0 || player == null) return;
 
             // Dense blades are only worth drawing close to the survivor. Distant terrain relies on its ground material.
-            float renderDistance = world.ChunkSize * 0.68f;
+            float renderDistance = world.ChunkSize * 0.64f;
             float renderDistanceSqr = renderDistance * renderDistance;
             Vector3 playerPos = player.position;
 
