@@ -32,7 +32,9 @@ namespace Dregfall.Editor
 
             catalog.isolatedBuildings = LoadPrefabs(new[]
             {
-                "Assets/Abandoned buildings/Prefab/abandoned_buildings/house_enter.prefab"
+                "Assets/Abandoned buildings/Prefab/abandoned_buildings/house_enter.prefab",
+                "Assets/Abandoned buildings/Prefab/abandoned_buildings/house_aband.prefab",
+                "Assets/Abandoned buildings/Prefab/abandoned_buildings/house_ruined.prefab"
             });
 
             EditorUtility.SetDirty(catalog);
