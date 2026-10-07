@@ -35,6 +35,11 @@ namespace Dregfall
         [SerializeField] float forestPatchScale = 0.0045f;
         [SerializeField] float clearingScale = 0.009f;
 
+        [Header("Phase 2E Civilization")]
+        [SerializeField, Range(0f, 0.2f)] float isolatedBuildingChance = 0.055f;
+        [SerializeField] float buildingClearRadius = 11f;
+        [SerializeField] float maxBuildingSlopeDelta = 0.85f;
+
         [Header("Phase 2D Waterways")]
         [SerializeField, Range(0.2f, 2f)] float creekDepth = 0.45f;
         [SerializeField, Range(0.2f, 2f)] float creekHalfWidth = 0.65f;
@@ -42,6 +47,7 @@ namespace Dregfall
         [SerializeField, Range(0f, 0.15f)] float seepFrequency = 0.018f;
 
         DregfallEnvironmentCatalog environmentCatalog;
+        DregfallCivilizationCatalog civilizationCatalog;
         DregfallGrassFieldRenderer grassField;
         Transform player;
         Transform chunkRoot;
@@ -72,6 +78,7 @@ namespace Dregfall
             chunkRoot = new GameObject("DREGFALL_StreamedWorld").transform;
             transform.SetParent(chunkRoot);
             environmentCatalog = Resources.Load<DregfallEnvironmentCatalog>("DREGFALL_EnvironmentCatalog");
+            civilizationCatalog = Resources.Load<DregfallCivilizationCatalog>("DREGFALL_CivilizationCatalog");
             if (environmentCatalog == null)
                 Debug.LogWarning("[DREGFALL] Environment catalog not ready yet. Unity will generate it automatically in the Editor.");
             else
@@ -172,10 +179,12 @@ namespace Dregfall
             if (grassField != null) grassField.BuildChunk(coord);
             // Scarce localized water only. Never generate broad water planes over streamed terrain.
             BuildWaterSurface(coord, go.transform);
-            PopulateWilderness(coord, go.transform);
+            Vector3? reservedBuilding = TryGetIsolatedBuildingSite(coord);
+            PopulateWilderness(coord, go.transform, reservedBuilding);
+            if (reservedBuilding.HasValue) BuildIsolatedBuilding(coord, go.transform, reservedBuilding.Value);
         }
 
-        void PopulateWilderness(Vector2Int coord, Transform chunk)
+        void PopulateWilderness(Vector2Int coord, Transform chunk, Vector3? reservedBuilding)
         {
             if (environmentCatalog == null)
             {
@@ -194,14 +203,14 @@ namespace Dregfall
             float forestRegion = GetForestRegionDensity(chunkCenter);
             int treeBudget = Mathf.RoundToInt(maxTreesPerChunk * Mathf.Lerp(0.10f, 1f, Mathf.Pow(forestRegion, 0.78f)));
             int plantBudget = Mathf.RoundToInt(maxUndergrowthPerChunk * Mathf.Lerp(0.22f, 1f, Mathf.Pow(forestRegion, 0.72f)));
-            SpawnEcologicalCategory(environmentCatalog.trees, treeBudget, coord, chunk, rng, 0, 1.02f, 1.34f);
-            SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 0.88f, 1.08f);
-            SpawnEcologicalCategory(environmentCatalog.undergrowth, plantBudget, coord, chunk, rng, 1, 0.92f, 1.55f);
-            SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.48f, 0.78f);
+            SpawnEcologicalCategory(environmentCatalog.trees, treeBudget, coord, chunk, rng, 0, 1.02f, 1.34f, reservedBuilding);
+            SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 0.88f, 1.08f, reservedBuilding);
+            SpawnEcologicalCategory(environmentCatalog.undergrowth, plantBudget, coord, chunk, rng, 1, 0.92f, 1.55f, reservedBuilding);
+            SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.48f, 0.78f, reservedBuilding);
         }
 
         void SpawnEcologicalCategory(GameObject[] prefabs, int targetCount, Vector2Int coord, Transform parent,
-            System.Random rng, int category, float minScale, float maxScale)
+            System.Random rng, int category, float minScale, float maxScale, Vector3? reservedBuilding)
         {
             if (prefabs == null || prefabs.Length == 0 || targetCount <= 0) return;
 
@@ -217,6 +226,7 @@ namespace Dregfall
                 if (category != 3 && new Vector2(worldX, worldZ).sqrMagnitude < spawnClearingRadius * spawnClearingRadius) continue;
                 // Keep vegetation out of actual tiny water pockets, but do not reserve huge corridors.
                 if (IsLocalizedWater(worldX, worldZ)) continue;
+                if (reservedBuilding.HasValue && new Vector2(worldX - reservedBuilding.Value.x, worldZ - reservedBuilding.Value.z).sqrMagnitude < buildingClearRadius * buildingClearRadius) continue;
 
                 float broad = GetWildernessDensity(new Vector3(worldX, 0f, worldZ));
                 float forest = Mathf.PerlinNoise(worldX * forestPatchScale + sx * 1.71f,
@@ -327,6 +337,58 @@ namespace Dregfall
 
                 spawned++;
             }
+        }
+
+        Vector3? TryGetIsolatedBuildingSite(Vector2Int coord)
+        {
+            if (civilizationCatalog == null || civilizationCatalog.isolatedBuildings == null ||
+                civilizationCatalog.isolatedBuildings.Length == 0) return null;
+
+            int seed = HashSeed(worldSeed, coord.x * 83492791 ^ coord.y * 297121507 ^ 0x51A7);
+            var rng = new System.Random(seed);
+            Vector3 center = new Vector3((coord.x + 0.5f) * chunkSize, 0f, (coord.y + 0.5f) * chunkSize);
+            float suitability = GetSettlementSuitability(center);
+            float civilizationRegion = Mathf.PerlinNoise(center.x * 0.00042f + 211.7f, center.z * 0.00042f + 83.1f);
+
+            // Remote buildings are rare and occur in broad civilization-influenced regions,
+            // leaving huge wilderness gaps between discoveries.
+            float chance = isolatedBuildingChance * Mathf.Lerp(0.35f, 1.25f, suitability) *
+                           Mathf.SmoothStep(0.38f, 0.78f, civilizationRegion);
+            if (rng.NextDouble() > chance) return null;
+
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                float x = coord.x * chunkSize + Mathf.Lerp(14f, chunkSize - 14f, (float)rng.NextDouble());
+                float z = coord.y * chunkSize + Mathf.Lerp(14f, chunkSize - 14f, (float)rng.NextDouble());
+                if (IsLocalizedWater(x, z)) continue;
+
+                float y = SampleGroundHeight(x, z);
+                float h1 = SampleGroundHeight(x + 5f, z);
+                float h2 = SampleGroundHeight(x - 5f, z);
+                float h3 = SampleGroundHeight(x, z + 5f);
+                float h4 = SampleGroundHeight(x, z - 5f);
+                float delta = Mathf.Max(Mathf.Abs(h1 - y), Mathf.Abs(h2 - y), Mathf.Abs(h3 - y), Mathf.Abs(h4 - y));
+                if (delta > maxBuildingSlopeDelta) continue;
+
+                return new Vector3(x, y, z);
+            }
+            return null;
+        }
+
+        void BuildIsolatedBuilding(Vector2Int coord, Transform parent, Vector3 site)
+        {
+            GameObject[] prefabs = civilizationCatalog.isolatedBuildings;
+            if (prefabs == null || prefabs.Length == 0) return;
+
+            int seed = HashSeed(worldSeed, coord.x * 1299709 ^ coord.y * 15485863 ^ 0xC4B1);
+            var rng = new System.Random(seed);
+            GameObject prefab = prefabs[rng.Next(prefabs.Length)];
+            if (prefab == null) return;
+
+            GameObject building = Instantiate(prefab, parent);
+            building.name = $"Civilization_Isolated_{prefab.name}_{coord.x}_{coord.y}";
+            building.transform.position = site;
+            building.transform.rotation = Quaternion.Euler(0f, rng.Next(4) * 90f, 0f);
         }
 
         GameObject PickRuntimeSafePrefab(GameObject[] prefabs, System.Random rng, int category)
