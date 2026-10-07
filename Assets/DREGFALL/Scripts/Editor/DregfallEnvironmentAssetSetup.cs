@@ -47,9 +47,7 @@ namespace Dregfall.Editor
                 "Assets/Realistic Tree/Prefabs/Standard/Ash/Ash 5.prefab",
                 "Assets/Realistic Tree/Prefabs/Standard/Birch/Birch 2.prefab",
                 "Assets/Realistic Tree/Prefabs/Standard/Birch/Birch 6.prefab",
-                "Assets/Realistic Tree/Prefabs/Standard/Chestnut/Chestnut 3.prefab",
-                "Assets/Realistic Tree/Prefabs/Standard/Spruce/Spruce 3.prefab",
-                "Assets/Realistic Tree/Prefabs/Standard/Spruce/Spruce 7.prefab"
+                "Assets/Realistic Tree/Prefabs/Standard/Chestnut/Chestnut 3.prefab"
             });
 
             catalog.grass = LoadPrefabs(new[]
@@ -121,11 +119,11 @@ namespace Dregfall.Editor
             ground.SetTexture("_MudTex", mud);
             ground.SetTexture("_SwampTex", forest);
             ground.SetTexture("_RockTex", rock);
-            ground.SetFloat("_Tiling", 0.12f);
-            ground.SetFloat("_VariationScale", 0.006f);
+            ground.SetFloat("_Tiling", 0.18f);
+            ground.SetFloat("_VariationScale", 0.0038f);
             ground.SetFloat("_RockSlopeStart", 0.30f);
             ground.SetFloat("_RockSlopeEnd", 0.64f);
-            ground.SetFloat("_Brightness", 0.90f);
+            ground.SetFloat("_Brightness", 1.04f);
 
             EditorUtility.SetDirty(ground);
             Debug.Log("[DREGFALL] Realistic procedural ground ready: earth-dominant soil + forest floor + sparse grass accents + slope rock.");
