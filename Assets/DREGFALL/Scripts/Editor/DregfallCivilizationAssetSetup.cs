@@ -49,39 +49,38 @@ namespace Dregfall.Editor
 
             foreach (Renderer renderer in prefab.GetComponentsInChildren<Renderer>(true))
             {
-                Material[] materials = renderer.sharedMaterials;
-                foreach (Material material in materials)
+                foreach (Material material in renderer.sharedMaterials)
                 {
-                    if (material == null || material.shader == null) continue;
-                    string shaderName = material.shader.name;
-                    bool needsConversion = shaderName == "Standard" ||
-                                           shaderName == "Hidden/InternalErrorShader" ||
-                                           shaderName.StartsWith("Legacy Shaders/") ||
-                                           shaderName.StartsWith("HDRP/") ||
-                                           shaderName.Contains("High Definition");
-                    if (!needsConversion) continue;
+                    if (material == null) continue;
 
-                    Texture albedo = material.HasProperty("_BaseMap") ? material.GetTexture("_BaseMap") :
-                                     material.HasProperty("_MainTex") ? material.GetTexture("_MainTex") : null;
-                    Texture normal = material.HasProperty("_BumpMap") ? material.GetTexture("_BumpMap") : null;
-                    Color tint = material.HasProperty("_BaseColor") ? material.GetColor("_BaseColor") :
-                                 material.HasProperty("_Color") ? material.GetColor("_Color") : Color.white;
-                    float metallic = material.HasProperty("_Metallic") ? material.GetFloat("_Metallic") : 0f;
-                    float smoothness = material.HasProperty("_Smoothness") ? material.GetFloat("_Smoothness") :
-                                       material.HasProperty("_Glossiness") ? material.GetFloat("_Glossiness") : 0.18f;
+                    string n = material.name.ToLowerInvariant();
+                    string albedoPath = n.Contains("roof")
+                        ? "Assets/Abandoned buildings/Textures/abandoned_buildings/T_house_roof_D.tga"
+                        : n.Contains("ruined")
+                            ? "Assets/Abandoned buildings/Textures/abandoned_buildings/T_house_ruined_D.tga"
+                            : "Assets/Abandoned buildings/Textures/abandoned_buildings/T_house_aband_D.tga";
+                    string normalPath = n.Contains("roof")
+                        ? "Assets/Abandoned buildings/Textures/abandoned_buildings/T_house_roof_N.tga"
+                        : n.Contains("ruined")
+                            ? "Assets/Abandoned buildings/Textures/abandoned_buildings/T_house_ruined_N.tga"
+                            : "Assets/Abandoned buildings/Textures/abandoned_buildings/T_house_aband_N.tga";
 
+                    Texture2D albedo = AssetDatabase.LoadAssetAtPath<Texture2D>(albedoPath);
+                    Texture2D normal = AssetDatabase.LoadAssetAtPath<Texture2D>(normalPath);
                     material.shader = urpLit;
+                    material.SetColor("_BaseColor", Color.white);
+                    material.SetFloat("_Metallic", 0f);
+                    material.SetFloat("_Smoothness", 0.12f);
                     if (albedo != null) material.SetTexture("_BaseMap", albedo);
                     if (normal != null)
                     {
                         material.SetTexture("_BumpMap", normal);
+                        material.SetFloat("_BumpScale", 1f);
                         material.EnableKeyword("_NORMALMAP");
                     }
-                    material.SetColor("_BaseColor", tint);
-                    material.SetFloat("_Metallic", metallic);
-                    material.SetFloat("_Smoothness", Mathf.Clamp(smoothness, 0f, 0.45f));
+                    material.DisableKeyword("_EMISSION");
                     EditorUtility.SetDirty(material);
-                    Debug.Log($"[DREGFALL] Converted building material '{material.name}' to URP Lit ({prefabPath}).");
+                    Debug.Log($"[DREGFALL] Rebuilt building material '{material.name}' with explicit URP textures ({prefabPath}).");
                 }
             }
         }
