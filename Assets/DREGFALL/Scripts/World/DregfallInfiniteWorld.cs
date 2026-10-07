@@ -25,10 +25,10 @@ namespace Dregfall
         [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
 
         [Header("Phase 2C Wilderness")]
-        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 42;
+        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 28;
         [SerializeField, Range(350, 2200)] int denseGrassPerChunk = 1080;
         [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 18;
-        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 132;
+        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 92;
         [SerializeField, Range(0, 40)] int maxRocksPerChunk = 2;
         [SerializeField] float maxVegetationSlope = 0.72f;
         [SerializeField] float spawnClearingRadius = 11f;
@@ -158,8 +158,8 @@ namespace Dregfall
             var groundBlock = new MaterialPropertyBlock();
             float groundVariation = Mathf.PerlinNoise(coord.x * 0.173f + 41.7f, coord.y * 0.173f + 93.1f);
             float dampVariation = Mathf.PerlinNoise(coord.x * 0.071f + 121.3f, coord.y * 0.071f + 17.9f);
-            Color drySoil = new Color(0.18f, 0.165f, 0.125f, 1f);
-            Color mossSoil = new Color(0.105f, 0.14f, 0.085f, 1f);
+            Color drySoil = new Color(0.235f, 0.215f, 0.165f, 1f);
+            Color mossSoil = new Color(0.145f, 0.175f, 0.105f, 1f);
             Color groundTint = Color.Lerp(drySoil, mossSoil, Mathf.Clamp01(groundVariation * 0.72f + dampVariation * 0.28f));
             groundBlock.SetColor("_BaseColor", groundTint);
             groundBlock.SetColor("_Color", groundTint);
@@ -267,7 +267,7 @@ namespace Dregfall
                 float allowedSlope = category == 0 ? maxVegetationSlope : category == 3 ? maxVegetationSlope * 1.05f : maxVegetationSlope * 1.25f;
                 if (slope > allowedSlope) continue;
 
-                GameObject prefab = PickRuntimeSafePrefab(prefabs, rng);
+                GameObject prefab = PickRuntimeSafePrefab(prefabs, rng, category);
                 if (prefab == null) continue;
 
                 GameObject instance = Instantiate(prefab, parent);
@@ -323,7 +323,7 @@ namespace Dregfall
             }
         }
 
-        GameObject PickRuntimeSafePrefab(GameObject[] prefabs, System.Random rng)
+        GameObject PickRuntimeSafePrefab(GameObject[] prefabs, System.Random rng, int category)
         {
             if (prefabs == null || prefabs.Length == 0) return null;
 
@@ -331,16 +331,47 @@ namespace Dregfall
             for (int offset = 0; offset < prefabs.Length; offset++)
             {
                 GameObject candidate = prefabs[(start + offset) % prefabs.Length];
-                if (candidate != null && IsRuntimeRenderable(candidate))
+                if (candidate != null && IsRuntimeRenderable(candidate, category))
                     return candidate;
             }
             return null;
         }
 
-        static bool IsRuntimeRenderable(GameObject prefab)
+        static bool IsRuntimeRenderable(GameObject prefab, int category)
         {
             Renderer[] renderers = prefab.GetComponentsInChildren<Renderer>(true);
             if (renderers == null || renderers.Length == 0) return false;
+
+            // The catalog can contain demo/placeholder objects that technically render but look
+            // terrible in the survival world. Trees especially must have a real mesh hierarchy,
+            // useful vertical silhouette and sane materials before they are allowed to spawn.
+            if (category == 0)
+            {
+                string lowerName = prefab.name.ToLowerInvariant();
+                if (lowerName.Contains("demo") || lowerName.Contains("preview") ||
+                    lowerName.Contains("sample") || lowerName.Contains("lod0") ||
+                    lowerName.Contains("stump") || lowerName.Contains("bush") ||
+                    lowerName.Contains("shrub") || lowerName.Contains("hedge"))
+                    return false;
+
+                MeshFilter[] treeMeshes = prefab.GetComponentsInChildren<MeshFilter>(true);
+                if (treeMeshes == null || treeMeshes.Length == 0) return false;
+
+                Bounds combined = new Bounds();
+                bool boundsReady = false;
+                foreach (MeshFilter mf in treeMeshes)
+                {
+                    if (mf == null || mf.sharedMesh == null) continue;
+                    Bounds b = mf.sharedMesh.bounds;
+                    Vector3 size = Vector3.Scale(b.size, mf.transform.lossyScale);
+                    Bounds scaled = new Bounds(mf.transform.position, new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z)));
+                    if (!boundsReady) { combined = scaled; boundsReady = true; }
+                    else combined.Encapsulate(scaled);
+                }
+                if (!boundsReady) return false;
+                float horizontal = Mathf.Max(0.01f, Mathf.Max(combined.size.x, combined.size.z));
+                if (combined.size.y < horizontal * 0.72f) return false;
+            }
 
             bool hasRenderableMaterial = false;
             foreach (Renderer renderer in renderers)
@@ -358,6 +389,13 @@ namespace Dregfall
                         shaderName.StartsWith("HDRP/", System.StringComparison.OrdinalIgnoreCase) ||
                         shaderName.Contains("High Definition", System.StringComparison.OrdinalIgnoreCase))
                         return false;
+
+                    if (category == 0)
+                    {
+                        Color tint = material.HasProperty("_BaseColor") ? material.GetColor("_BaseColor") : material.color;
+                        float peak = Mathf.Max(tint.r, Mathf.Max(tint.g, tint.b));
+                        if (peak < 0.12f) return false;
+                    }
 
                     hasRenderableMaterial = true;
                 }
