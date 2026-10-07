@@ -104,23 +104,30 @@ namespace Dregfall
             var rng = new System.Random(seed);
             GrassChunk data = new GrassChunk(variants.Count);
 
-            int carpetCount = Mathf.RoundToInt(grassPerChunk * 0.82f);
+            int carpetCount = Mathf.RoundToInt(grassPerChunk * 0.72f);
             for (int i = 0; i < carpetCount; i++)
             {
                 float x = coord.x * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
                 float z = coord.y * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
-                float ecology = world.GetWildernessDensity(new Vector3(x, 0f, z));
+                Vector3 samplePos = new Vector3(x, 0f, z);
+                float ecology = world.GetWildernessDensity(samplePos);
+                float forestRegion = world.GetForestRegionDensity(samplePos);
                 float patch = Mathf.PerlinNoise(x * 0.026f + 31.7f, z * 0.026f + 73.1f);
                 float meadow = Mathf.PerlinNoise(x * 0.0045f + 119.3f, z * 0.0045f + 211.9f);
                 float trail = Mathf.PerlinNoise(x * 0.012f + 317.2f, z * 0.012f + 89.4f);
 
                 // Thick living carpet. Soil is exposed only in coherent clearing/trail pockets.
-                float keep = Mathf.Clamp01(0.56f + ecology * 0.15f + patch * 0.16f + meadow * 0.09f);
+                float keep = Mathf.Clamp01(0.48f + ecology * 0.12f + patch * 0.18f + meadow * 0.16f);
+                // Deep woodland should read as leaf litter, ferns and soil rather than a bright lawn.
+                keep *= Mathf.Lerp(1.08f, 0.56f, forestRegion);
                 // Forest-floor grass fades naturally in the deepest canopy instead of creating a uniform lawn.
                 float canopy = Mathf.PerlinNoise(x * 0.0045f + 66.1f, z * 0.0045f + 14.7f);
                 if (canopy > 0.74f && ecology > 0.58f) keep *= Mathf.Lerp(0.68f, 0.88f, patch);
                 if (trail > 0.82f && meadow < 0.52f) keep *= 0.18f;
-                if (patch < 0.26f) keep *= 0.22f;
+                if (patch < 0.30f) keep *= 0.16f;
+                // Coherent moss/leaf-litter holes break up the floor at zero GameObject cost.
+                float litterPocket = Mathf.PerlinNoise(x * 0.018f + 401.3f, z * 0.018f + 177.9f);
+                if (forestRegion > 0.52f && litterPocket > 0.70f) keep *= 0.28f;
                 if ((float)rng.NextDouble() > keep) continue;
 
                 float y = world.SampleGroundHeight(x, z);
