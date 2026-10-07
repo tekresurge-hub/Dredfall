@@ -36,7 +36,7 @@ namespace Dregfall
         [SerializeField] float clearingScale = 0.009f;
 
         [Header("Phase 2E Civilization")]
-        [SerializeField, Range(0f, 0.2f)] float isolatedBuildingChance = 0.055f;
+        [SerializeField, Range(0f, 0.8f)] float isolatedBuildingChance = 0.42f;
         [SerializeField] float buildingClearRadius = 11f;
         [SerializeField] float maxBuildingSlopeDelta = 0.85f;
 
@@ -352,9 +352,14 @@ namespace Dregfall
 
             // Remote buildings are rare and occur in broad civilization-influenced regions,
             // leaving huge wilderness gaps between discoveries.
-            float chance = isolatedBuildingChance * Mathf.Lerp(0.35f, 1.25f, suitability) *
-                           Mathf.SmoothStep(0.38f, 0.78f, civilizationRegion);
-            if (rng.NextDouble() > chance) return null;
+            float regionalInfluence = Mathf.Lerp(0.72f, 1.18f,
+                Mathf.SmoothStep(0.28f, 0.78f, civilizationRegion));
+            float chance = isolatedBuildingChance * Mathf.Lerp(0.82f, 1.15f, suitability) * regionalInfluence;
+
+            // Cabins/abandoned homes are a normal wilderness discovery in DREGFALL.
+            // They remain deterministic and never appear in every chunk, but the player should
+            // encounter them regularly instead of running for many minutes through an empty world.
+            if (rng.NextDouble() > Mathf.Clamp01(chance)) return null;
 
             for (int attempt = 0; attempt < 8; attempt++)
             {
