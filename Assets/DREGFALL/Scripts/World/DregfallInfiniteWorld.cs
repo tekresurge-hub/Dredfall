@@ -394,6 +394,36 @@ namespace Dregfall
             building.name = $"Civilization_Isolated_{prefab.name}_{coord.x}_{coord.y}";
             building.transform.position = site;
             building.transform.rotation = Quaternion.Euler(0f, rng.Next(4) * 90f, 0f);
+            ApplyDregfallBuildingWeathering(building, coord);
+        }
+
+        void ApplyDregfallBuildingWeathering(GameObject building, Vector2Int coord)
+        {
+            // Per-instance property blocks keep the original asset materials intact while giving
+            // generated structures DREGFALL's darker, damp, long-abandoned visual treatment.
+            int seed = HashSeed(worldSeed, coord.x * 32452843 ^ coord.y * 49979687 ^ 0xDA4B);
+            var rng = new System.Random(seed);
+            float age = Mathf.Lerp(0.58f, 0.88f, (float)rng.NextDouble());
+            float damp = Mathf.Lerp(0.10f, 0.28f, (float)rng.NextDouble());
+            Color agedStone = new Color(0.64f, 0.66f, 0.57f, 1f);
+            Color dampMoss = new Color(0.34f, 0.43f, 0.27f, 1f);
+            Color weatherTint = Color.Lerp(agedStone, dampMoss, damp);
+            weatherTint *= age;
+            weatherTint.a = 1f;
+
+            foreach (Renderer renderer in building.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer == null) continue;
+                var block = new MaterialPropertyBlock();
+                renderer.GetPropertyBlock(block);
+                block.SetColor("_BaseColor", weatherTint);
+                block.SetColor("_Color", weatherTint);
+                block.SetFloat("_Smoothness", 0.06f);
+                block.SetFloat("_Metallic", 0f);
+                renderer.SetPropertyBlock(block);
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                renderer.receiveShadows = true;
+            }
         }
 
         GameObject PickRuntimeSafePrefab(GameObject[] prefabs, System.Random rng, int category)
