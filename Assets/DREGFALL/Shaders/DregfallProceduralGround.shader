@@ -111,19 +111,26 @@ Shader "DREGFALL/ProceduralGround"
                 grass = lerp(grass, grassLum.xxx, 0.24) * half3(0.76,0.86,0.66);
 
                 // Forest litter appears in broad damp/wooded patches.
-                float forestMask = smoothstep(0.47, 0.76, ecology);
-                half3 baseColor = lerp(earth, forest, forestMask * 0.72);
+                float forestMask = smoothstep(0.40, 0.72, ecology);
+                half3 baseColor = lerp(earth, forest, forestMask * 0.84);
 
                 // Painted grass is only a sparse accent; 3D vegetation supplies most greenery.
                 float grassRegion = valueNoise(w * 0.0031 + 77.0);
                 float grassFine = valueNoise(w * 0.017 + 121.0);
                 float grassMask = smoothstep(0.70, 0.88, grassRegion) * smoothstep(0.48, 0.72, grassFine);
-                baseColor = lerp(baseColor, grass, grassMask * 0.18);
+                baseColor = lerp(baseColor, grass, grassMask * 0.14);
 
                 // Broad damp/dry tonal changes make kilometres of ground feel non-uniform.
                 float broad = valueNoise(w * 0.0018 + 203.0);
-                baseColor *= lerp(0.86, 1.06, broad);
-                baseColor *= lerp(0.94, 1.05, micro);
+                baseColor *= lerp(0.88, 1.08, broad);
+                baseColor *= lerp(0.95, 1.05, micro);
+
+                // Fine leaf-litter/soil breakup: shader-only detail, so it costs no spawned objects.
+                float litterA = valueNoise(w * 0.075 + 281.0);
+                float litterB = valueNoise(w * 0.19 + 613.0);
+                float litter = saturate(litterA * 0.66 + litterB * 0.34);
+                half3 litterTint = baseColor * half3(0.82, 0.78, 0.65);
+                baseColor = lerp(baseColor, litterTint, forestMask * smoothstep(0.56, 0.82, litter) * 0.32);
 
                 // Expose stone naturally as terrain gets steeper.
                 float slope = 1.0 - saturate(n.y);
@@ -138,7 +145,10 @@ Shader "DREGFALL/ProceduralGround"
                 float ndl = saturate(dot(n, mainLight.direction));
                 half3 ambient = SampleSH(n);
                 half3 lighting = ambient + mainLight.color * ndl * mainLight.shadowAttenuation;
-                // Fine world-space breakup restores close-range surface definition without visible tiling.\n                float grit = valueNoise(w * 0.31 + 317.0);\n                baseColor *= lerp(0.91, 1.08, grit);\n                lighting = max(lighting, 0.28);
+                // Fine world-space breakup restores close-range surface definition without visible tiling.
+                float grit = valueNoise(w * 0.31 + 317.0);
+                baseColor *= lerp(0.93, 1.07, grit);
+                lighting = max(lighting, 0.30);
                 return half4(baseColor * lighting, 1);
             }
             ENDHLSL
