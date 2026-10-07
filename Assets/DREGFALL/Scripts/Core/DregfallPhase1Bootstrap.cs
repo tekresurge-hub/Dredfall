@@ -18,11 +18,17 @@ namespace Dregfall
             }
             cam.fieldOfView = 52f;
             cam.nearClipPlane = 0.1f;
-            cam.farClipPlane = 420f;
+            cam.farClipPlane = 1200f;
             DregfallVisualQuality.Apply(cam);
 
+            GameObject worldSystem = new GameObject("DREGFALL_FixedWorldSystem");
+            DregfallWorldGenerator world = worldSystem.AddComponent<DregfallWorldGenerator>();
+            world.GenerateWorld();
+
+            Vector3 spawn = world.GetRecommendedSpawnPoint();
+
             GameObject player = new GameObject("DREGFALL_Survivor");
-            player.transform.position = new Vector3(0f, 8f, 0f);
+            player.transform.position = spawn + Vector3.up * 3f;
 
             CharacterController cc = player.AddComponent<CharacterController>();
             cc.height = 2f;
@@ -32,6 +38,7 @@ namespace Dregfall
             player.AddComponent<DregfallPlayerController>();
             player.AddComponent<DregfallInteractionSystem>();
             player.AddComponent<DregfallProximityInteraction>();
+            DregfallInteractiveGrass.SetPlayer(player.transform);
 
             GameObject survivorPrefab = Resources.Load<GameObject>("DREGFALL_SurvivorVisual");
             if (survivorPrefab != null)
@@ -63,11 +70,7 @@ namespace Dregfall
             if (follow == null) follow = cam.gameObject.AddComponent<DregfallCameraFollow>();
             follow.SetTarget(player.transform);
 
-            GameObject worldSystem = new GameObject("DREGFALL_InfiniteWorldSystem");
-            DregfallInfiniteWorld world = worldSystem.AddComponent<DregfallInfiniteWorld>();
-            world.Initialize(player.transform);
-
-            Debug.Log("[DREGFALL] Phase 2A foundation ready. Continuous streamed terrain active; old hex/test world retired.");
+            Debug.Log("[DREGFALL] Fixed 8x8 km world active. Unlimited generation retired.");
         }
     }
 }
