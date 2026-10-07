@@ -104,7 +104,7 @@ namespace Dregfall
             var rng = new System.Random(seed);
             GrassChunk data = new GrassChunk(variants.Count);
 
-            int carpetCount = Mathf.RoundToInt(grassPerChunk * 0.72f);
+            int carpetCount = Mathf.RoundToInt(grassPerChunk * 0.86f);
             for (int i = 0; i < carpetCount; i++)
             {
                 float x = coord.x * world.ChunkSize + (float)rng.NextDouble() * world.ChunkSize;
@@ -117,9 +117,9 @@ namespace Dregfall
                 float trail = Mathf.PerlinNoise(x * 0.012f + 317.2f, z * 0.012f + 89.4f);
 
                 // Thick living carpet. Soil is exposed only in coherent clearing/trail pockets.
-                float keep = Mathf.Clamp01(0.48f + ecology * 0.12f + patch * 0.18f + meadow * 0.16f);
+                float keep = Mathf.Clamp01(0.56f + ecology * 0.12f + patch * 0.18f + meadow * 0.18f);
                 // Deep woodland should read as leaf litter, ferns and soil rather than a bright lawn.
-                keep *= Mathf.Lerp(1.08f, 0.56f, forestRegion);
+                keep *= Mathf.Lerp(1.12f, 0.72f, forestRegion);
                 // Forest-floor grass fades naturally in the deepest canopy instead of creating a uniform lawn.
                 float canopy = Mathf.PerlinNoise(x * 0.0045f + 66.1f, z * 0.0045f + 14.7f);
                 if (canopy > 0.74f && ecology > 0.58f) keep *= Mathf.Lerp(0.68f, 0.88f, patch);
@@ -138,9 +138,9 @@ namespace Dregfall
 
                 int variant = rng.Next(variants.Count);
                 float heightNoise = Mathf.PerlinNoise(x * 0.035f + 9.2f, z * 0.035f + 17.8f);
-                float height = Mathf.Lerp(0.82f, 1.18f,
+                float height = Mathf.Lerp(1.05f, 1.52f,
                     Mathf.Clamp01(heightNoise * 0.72f + (float)rng.NextDouble() * 0.28f));
-                float width = Mathf.Lerp(0.82f, 1.04f, (float)rng.NextDouble());
+                float width = Mathf.Lerp(0.94f, 1.18f, (float)rng.NextDouble());
                 Quaternion rotation = Quaternion.Euler(
                     Mathf.Lerp(-2.5f, 2.5f, (float)rng.NextDouble()),
                     (float)rng.NextDouble() * 360f,
@@ -162,7 +162,7 @@ namespace Dregfall
             if (variants.Count == 0 || player == null) return;
 
             // Dense blades are only worth drawing close to the survivor. Distant terrain relies on its ground material.
-            float renderDistance = world.ChunkSize * 0.58f;
+            float renderDistance = world.ChunkSize * 0.62f;
             float renderDistanceSqr = renderDistance * renderDistance;
             Vector3 playerPos = player.position;
 
