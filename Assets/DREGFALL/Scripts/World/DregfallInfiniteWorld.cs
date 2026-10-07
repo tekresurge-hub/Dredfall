@@ -25,10 +25,10 @@ namespace Dregfall
         [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
 
         [Header("Phase 2C Wilderness")]
-        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 44;
-        [SerializeField, Range(350, 2200)] int denseGrassPerChunk = 1080;
+        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 70;
+        [SerializeField, Range(350, 2200)] int denseGrassPerChunk = 1380;
         [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 18;
-        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 118;
+        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 180;
         [SerializeField, Range(0, 40)] int maxRocksPerChunk = 2;
         [SerializeField] float maxVegetationSlope = 0.72f;
         [SerializeField] float spawnClearingRadius = 11f;
@@ -192,11 +192,11 @@ namespace Dregfall
             // This looks natural without paying the cost of uniformly filling every chunk.
             Vector3 chunkCenter = new Vector3((coord.x + 0.5f) * chunkSize, 0f, (coord.y + 0.5f) * chunkSize);
             float forestRegion = GetForestRegionDensity(chunkCenter);
-            int treeBudget = Mathf.RoundToInt(maxTreesPerChunk * Mathf.Lerp(0.18f, 1f, forestRegion));
-            int plantBudget = Mathf.RoundToInt(maxUndergrowthPerChunk * Mathf.Lerp(0.28f, 1f, forestRegion));
-            SpawnEcologicalCategory(environmentCatalog.trees, treeBudget, coord, chunk, rng, 0, 0.92f, 1.18f);
+            int treeBudget = Mathf.RoundToInt(maxTreesPerChunk * Mathf.Lerp(0.10f, 1f, Mathf.Pow(forestRegion, 0.78f)));
+            int plantBudget = Mathf.RoundToInt(maxUndergrowthPerChunk * Mathf.Lerp(0.22f, 1f, Mathf.Pow(forestRegion, 0.72f)));
+            SpawnEcologicalCategory(environmentCatalog.trees, treeBudget, coord, chunk, rng, 0, 1.02f, 1.34f);
             SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 0.88f, 1.08f);
-            SpawnEcologicalCategory(environmentCatalog.undergrowth, plantBudget, coord, chunk, rng, 1, 0.68f, 1.16f);
+            SpawnEcologicalCategory(environmentCatalog.undergrowth, plantBudget, coord, chunk, rng, 1, 0.92f, 1.55f);
             SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.48f, 0.78f);
         }
 
@@ -237,14 +237,14 @@ namespace Dregfall
 
                 if (category == 0)
                 {
-                    chance = Mathf.Lerp(0.08f, 0.94f, forestCore);
+                    chance = Mathf.Lerp(0.05f, 0.98f, Mathf.Pow(forestCore, 0.72f));
                     chance *= Mathf.Lerp(0.38f, 1f, broad);
-                    chance *= Mathf.Lerp(1f, 0.10f, clearing);
+                    chance *= Mathf.Lerp(1f, 0.06f, clearing);
                 }
                 else if (category == 1)
                 {
                     // Bushes/ground plants favour forest edges and pockets beneath trees.
-                    chance = Mathf.Clamp01(0.34f + forestCore * 0.28f + edge * 0.28f + local * 0.16f);
+                    chance = Mathf.Clamp01(0.38f + forestCore * 0.34f + edge * 0.26f + local * 0.18f);
                     chance *= Mathf.Lerp(1f, 0.58f, clearing);
                 }
                 else if (category == 3)
