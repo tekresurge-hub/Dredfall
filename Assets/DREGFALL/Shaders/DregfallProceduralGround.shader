@@ -104,21 +104,21 @@ Shader "DREGFALL/ProceduralGround"
 
                 // Pull imported textures into a muted, realistic DREGFALL palette.
                 float earthLum = dot(earth, half3(0.299,0.587,0.114));
-                earth = lerp(earth, earthLum.xxx, 0.08) * half3(0.91,0.86,0.76);
+                earth = lerp(earth, earthLum.xxx, 0.10) * half3(0.72,0.76,0.55);
                 float forestLum = dot(forest, half3(0.299,0.587,0.114));
-                forest = lerp(forest, forestLum.xxx, 0.12) * half3(0.84,0.84,0.70);
+                forest = lerp(forest, forestLum.xxx, 0.10) * half3(0.62,0.78,0.48);
                 float grassLum = dot(grass, half3(0.299,0.587,0.114));
-                grass = lerp(grass, grassLum.xxx, 0.24) * half3(0.76,0.86,0.66);
+                grass = lerp(grass, grassLum.xxx, 0.18) * half3(0.68,0.88,0.54);
 
                 // Forest litter appears in broad damp/wooded patches.
-                float forestMask = smoothstep(0.40, 0.72, ecology);
-                half3 baseColor = lerp(earth, forest, forestMask * 0.84);
+                float forestMask = smoothstep(0.30, 0.64, ecology);
+                half3 baseColor = lerp(earth, forest, forestMask * 0.94);
 
                 // Painted grass is only a sparse accent; 3D vegetation supplies most greenery.
                 float grassRegion = valueNoise(w * 0.0031 + 77.0);
                 float grassFine = valueNoise(w * 0.017 + 121.0);
-                float grassMask = smoothstep(0.70, 0.88, grassRegion) * smoothstep(0.48, 0.72, grassFine);
-                baseColor = lerp(baseColor, grass, grassMask * 0.14);
+                float grassMask = smoothstep(0.52, 0.78, grassRegion) * smoothstep(0.38, 0.66, grassFine);
+                baseColor = lerp(baseColor, grass, grassMask * 0.34);
 
                 // Broad damp/dry tonal changes make kilometres of ground feel non-uniform.
                 float broad = valueNoise(w * 0.0018 + 203.0);
@@ -129,7 +129,7 @@ Shader "DREGFALL/ProceduralGround"
                 float litterA = valueNoise(w * 0.075 + 281.0);
                 float litterB = valueNoise(w * 0.19 + 613.0);
                 float litter = saturate(litterA * 0.66 + litterB * 0.34);
-                half3 litterTint = baseColor * half3(0.82, 0.78, 0.65);
+                half3 litterTint = baseColor * half3(0.78, 0.86, 0.64);
                 baseColor = lerp(baseColor, litterTint, forestMask * smoothstep(0.56, 0.82, litter) * 0.32);
 
                 // Expose stone naturally as terrain gets steeper.
