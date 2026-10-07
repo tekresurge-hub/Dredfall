@@ -31,6 +31,7 @@ namespace Dregfall
 
             player.AddComponent<DregfallPlayerController>();
             player.AddComponent<DregfallInteractionSystem>();
+            player.AddComponent<DregfallProximityInteraction>();
 
             GameObject survivorPrefab = Resources.Load<GameObject>("DREGFALL_SurvivorVisual");
             if (survivorPrefab != null)
