@@ -38,7 +38,8 @@ namespace Dregfall
         [Header("Phase 2D Waterways")]
         [SerializeField, Range(0.2f, 2f)] float creekDepth = 0.45f;
         [SerializeField, Range(0.2f, 2f)] float creekHalfWidth = 0.65f;
-        [SerializeField, Range(0f, 0.15f)] float pondFrequency = 0.035f;
+        [SerializeField, Range(0f, 0.15f)] float pondFrequency = 0.028f;
+        [SerializeField, Range(0f, 0.15f)] float seepFrequency = 0.018f;
 
         DregfallEnvironmentCatalog environmentCatalog;
         DregfallGrassFieldRenderer grassField;
@@ -169,8 +170,7 @@ namespace Dregfall
 
             loaded.Add(coord, go);
             if (grassField != null) grassField.BuildChunk(coord);
-            // Phase 2D water rendering temporarily disabled: previous surface mesh could cover streamed terrain.
-            // Water mask/bed data stays deterministic so localized streams can be rebuilt safely.
+            // Scarce localized water only. Never generate broad water planes over streamed terrain.
             BuildWaterSurface(coord, go.transform);
             PopulateWilderness(coord, go.transform);
         }
@@ -215,8 +215,8 @@ namespace Dregfall
                 float worldX = coord.x * chunkSize + 1f + (float)rng.NextDouble() * (chunkSize - 2f);
                 float worldZ = coord.y * chunkSize + 1f + (float)rng.NextDouble() * (chunkSize - 2f);
                 if (category != 3 && new Vector2(worldX, worldZ).sqrMagnitude < spawnClearingRadius * spawnClearingRadius) continue;
-                // Phase 2D water rendering is temporarily disabled. Do not let its provisional
-                // water mask erase the certified wilderness population while waterways are rebuilt.
+                // Keep vegetation out of actual tiny water pockets, but do not reserve huge corridors.
+                if (IsLocalizedWater(worldX, worldZ)) continue;
 
                 float broad = GetWildernessDensity(new Vector3(worldX, 0f, worldZ));
                 float forest = Mathf.PerlinNoise(worldX * forestPatchScale + sx * 1.71f,
@@ -458,30 +458,31 @@ namespace Dregfall
 
         public float GetWaterMask(float x, float z)
         {
-            float sx = HashSeed(worldSeed, 211) * 0.001f;
-            float sz = HashSeed(worldSeed, 307) * 0.001f;
-
-            // Sparse creek bands: compare Z to a smoothly warped centerline repeated only every ~420m.
-            // This produces narrow continuous streams instead of flooding whole chunks.
-            float bandPeriod = 420f;
-            float meander = (Mathf.PerlinNoise(x * 0.0022f + sx, z * 0.00045f + sz) - 0.5f) * 105f;
-            float band = Mathf.Repeat(z + meander + worldSeed * 0.071f, bandPeriod);
-            float distanceToCenter = Mathf.Min(band, bandPeriod - band);
-            float width = Mathf.Lerp(1.4f, 3.0f,
-                Mathf.PerlinNoise(x * 0.0014f + sx * 2.1f, z * 0.0014f + sz * 2.1f));
-            float creek = 1f - Mathf.SmoothStep(width, width + 2.2f, distanceToCenter);
-
-            // Gate some creek stretches out so waterways are uncommon rather than everywhere.
-            float gate = Mathf.PerlinNoise(x * 0.00042f + sx * 1.7f, z * 0.00042f + sz * 1.7f);
-            creek *= Mathf.SmoothStep(0.46f, 0.57f, gate);
-
-            // Rare compact ponds.
-            float pondNoise = Mathf.PerlinNoise(x * 0.0032f + sx * 3.1f, z * 0.0032f + sz * 3.1f);
-            float pond = Mathf.SmoothStep(0.885f, 0.925f, pondNoise);
-            return Mathf.Clamp01(Mathf.Max(creek, pond));
+            // The old repeating creek-band mask was retired because it could create artificial,
+            // oversized water corridors. Phase 2D uses only localized deterministic water pockets.
+            return IsLocalizedWater(x, z) ? 1f : 0f;
         }
 
-        public bool IsWater(float x, float z) => GetWaterMask(x, z) > 0.52f;
+        public bool IsWater(float x, float z) => IsLocalizedWater(x, z);
+
+        bool IsLocalizedWater(float x, float z)
+        {
+            Vector2Int coord = new Vector2Int(Mathf.FloorToInt(x / chunkSize), Mathf.FloorToInt(z / chunkSize));
+            int waterSeed = HashSeed(worldSeed, coord.x * 92821 ^ coord.y * 68917 ^ 0x2D71);
+            var rng = new System.Random(waterSeed);
+            float regionX = (coord.x * chunkSize + chunkSize * 0.5f) * 0.00085f + 91.3f;
+            float regionZ = (coord.y * chunkSize + chunkSize * 0.5f) * 0.00085f + 47.9f;
+            float wetRegion = Mathf.PerlinNoise(regionX, regionZ);
+            if (wetRegion < 0.60f || rng.NextDouble() > pondFrequency) return false;
+
+            float cx = coord.x * chunkSize + Mathf.Lerp(10f, chunkSize - 10f, (float)rng.NextDouble());
+            float cz = coord.y * chunkSize + Mathf.Lerp(10f, chunkSize - 10f, (float)rng.NextDouble());
+            float rx = Mathf.Lerp(0.85f, 1.8f, (float)rng.NextDouble());
+            float rz = Mathf.Lerp(0.65f, 1.35f, (float)rng.NextDouble());
+            float dx = (x - cx) / Mathf.Max(0.01f, rx);
+            float dz = (z - cz) / Mathf.Max(0.01f, rz);
+            return dx * dx + dz * dz < 1f;
+        }
 
         public float SampleGroundHeight(float x, float z)
         {
