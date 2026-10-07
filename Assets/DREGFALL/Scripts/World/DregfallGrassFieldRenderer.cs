@@ -59,7 +59,7 @@ namespace Dregfall
         {
             world = owner;
             player = target;
-            grassPerChunk = Mathf.Clamp(density, 350, 2200);
+            grassPerChunk = Mathf.Clamp(density, 280, 1400);
             variants.Clear();
 
             if (grassPrefabs == null) return;
@@ -80,6 +80,16 @@ namespace Dregfall
                 {
                     mainTexture.filterMode = FilterMode.Trilinear;
                     mainTexture.anisoLevel = 16;
+                }
+
+                // Avoid fluorescent/cardboard-looking grass. Preserve the source texture but
+                // normalize overly bright material tint so it sits inside the forest palette.
+                if (mat.HasProperty("_BaseColor"))
+                {
+                    Color tint = mat.GetColor("_BaseColor");
+                    float peak = Mathf.Max(tint.r, Mathf.Max(tint.g, tint.b));
+                    if (peak > 0.88f)
+                        mat.SetColor("_BaseColor", Color.Lerp(tint, new Color(0.58f, 0.68f, 0.42f, tint.a), 0.34f));
                 }
 
                 variants.Add(new GrassVariant { mesh = mf.sharedMesh, material = mat });
@@ -145,7 +155,7 @@ namespace Dregfall
             if (variants.Count == 0 || player == null) return;
 
             // Dense blades are only worth drawing close to the survivor. Distant terrain relies on its ground material.
-            float renderDistance = world.ChunkSize * 0.64f;
+            float renderDistance = world.ChunkSize * 0.58f;
             float renderDistanceSqr = renderDistance * renderDistance;
             Vector3 playerPos = player.position;
 
