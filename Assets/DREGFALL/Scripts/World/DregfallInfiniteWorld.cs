@@ -392,6 +392,7 @@ namespace Dregfall
 
             GameObject building = Instantiate(prefab, parent);
             building.name = $"Civilization_Isolated_{prefab.name}_{coord.x}_{coord.y}";
+            Debug.Log($"[DREGFALL] Spawned building variant: {prefab.name} at chunk {coord.x},{coord.y}");
             building.transform.position = site;
             building.transform.rotation = Quaternion.Euler(0f, rng.Next(4) * 90f, 0f);
             ApplyDregfallBuildingWeathering(building, coord);
