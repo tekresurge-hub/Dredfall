@@ -395,6 +395,7 @@ namespace Dregfall
             building.transform.position = site;
             building.transform.rotation = Quaternion.Euler(0f, rng.Next(4) * 90f, 0f);
             ApplyDregfallBuildingWeathering(building, coord);
+            DregfallBuildingRuntimeAdapter.Prepare(building);
         }
 
         void ApplyDregfallBuildingWeathering(GameObject building, Vector2Int coord)
