@@ -25,10 +25,10 @@ namespace Dregfall
         [SerializeField, Range(1, 8)] int chunksBuiltPerFrame = 2;
 
         [Header("Phase 2C Wilderness")]
-        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 28;
+        [SerializeField, Range(0, 160)] int maxTreesPerChunk = 44;
         [SerializeField, Range(350, 2200)] int denseGrassPerChunk = 1080;
         [SerializeField, Range(0, 300)] int interactiveGrassPerChunk = 18;
-        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 92;
+        [SerializeField, Range(0, 650)] int maxUndergrowthPerChunk = 118;
         [SerializeField, Range(0, 40)] int maxRocksPerChunk = 2;
         [SerializeField] float maxVegetationSlope = 0.72f;
         [SerializeField] float spawnClearingRadius = 11f;
@@ -188,9 +188,15 @@ namespace Dregfall
 
             // Do not decide the whole chunk from one sample. Each candidate reads the continuous
             // world ecology maps so forests and clearings flow naturally across chunk boundaries.
-            SpawnEcologicalCategory(environmentCatalog.trees, maxTreesPerChunk, coord, chunk, rng, 0, 0.88f, 1.14f);
+            // Forests are regional: dense woodland pockets separated by genuine clearings.
+            // This looks natural without paying the cost of uniformly filling every chunk.
+            Vector3 chunkCenter = new Vector3((coord.x + 0.5f) * chunkSize, 0f, (coord.y + 0.5f) * chunkSize);
+            float forestRegion = GetForestRegionDensity(chunkCenter);
+            int treeBudget = Mathf.RoundToInt(maxTreesPerChunk * Mathf.Lerp(0.18f, 1f, forestRegion));
+            int plantBudget = Mathf.RoundToInt(maxUndergrowthPerChunk * Mathf.Lerp(0.28f, 1f, forestRegion));
+            SpawnEcologicalCategory(environmentCatalog.trees, treeBudget, coord, chunk, rng, 0, 0.92f, 1.18f);
             SpawnEcologicalCategory(environmentCatalog.grass, interactiveGrassPerChunk, coord, chunk, rng, 3, 0.88f, 1.08f);
-            SpawnEcologicalCategory(environmentCatalog.undergrowth, maxUndergrowthPerChunk, coord, chunk, rng, 1, 0.68f, 1.16f);
+            SpawnEcologicalCategory(environmentCatalog.undergrowth, plantBudget, coord, chunk, rng, 1, 0.68f, 1.16f);
             SpawnEcologicalCategory(environmentCatalog.rocks, maxRocksPerChunk, coord, chunk, rng, 2, 0.48f, 0.78f);
         }
 
@@ -527,6 +533,18 @@ namespace Dregfall
             float sz = HashSeed(worldSeed, 131) * 0.001f;
             return Mathf.PerlinNoise(worldPosition.x * 0.0009f + sx,
                                      worldPosition.z * 0.0009f + sz);
+        }
+
+        public float GetForestRegionDensity(Vector3 worldPosition)
+        {
+            float sx = HashSeed(worldSeed, 433) * 0.001f;
+            float sz = HashSeed(worldSeed, 577) * 0.001f;
+            float broad = Mathf.PerlinNoise(worldPosition.x * 0.00145f + sx,
+                                            worldPosition.z * 0.00145f + sz);
+            float pockets = Mathf.PerlinNoise(worldPosition.x * 0.0042f + sx * 1.9f,
+                                              worldPosition.z * 0.0042f + sz * 1.9f);
+            float density = broad * 0.78f + pockets * 0.22f;
+            return Mathf.SmoothStep(0.34f, 0.72f, density);
         }
 
 
