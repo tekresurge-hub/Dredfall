@@ -21,11 +21,37 @@ namespace Dregfall
             cam.farClipPlane = 1200f;
             DregfallVisualQuality.Apply(cam);
 
-            GameObject worldSystem = new GameObject("DREGFALL_FixedWorldSystem");
-            DregfallWorldGenerator world = worldSystem.AddComponent<DregfallWorldGenerator>();
-            world.GenerateWorld();
+            // Respect a terrain authored in the current scene (including the HDRP demo).
+            // Only generate the legacy fixed world when no terrain is present.
+            Terrain[] sceneTerrains = Object.FindObjectsByType<Terrain>(FindObjectsSortMode.None);
+            Vector3 spawn;
+            if (sceneTerrains.Length > 0)
+            {
+                Terrain selected = sceneTerrains[0];
+                for (int i = 1; i < sceneTerrains.Length; i++)
+                {
+                    if (sceneTerrains[i].terrainData != null &&
+                        (selected.terrainData == null ||
+                         sceneTerrains[i].terrainData.size.x * sceneTerrains[i].terrainData.size.z >
+                         selected.terrainData.size.x * selected.terrainData.size.z))
+                        selected = sceneTerrains[i];
+                }
 
-            Vector3 spawn = world.GetRecommendedSpawnPoint();
+                Vector3 origin = selected.transform.position;
+                Vector3 size = selected.terrainData.size;
+                float x = origin.x + size.x * 0.5f;
+                float z = origin.z + size.z * 0.5f;
+                float y = selected.SampleHeight(new Vector3(x, 0f, z)) + origin.y;
+                spawn = new Vector3(x, y, z);
+                Debug.Log("[DREGFALL] Using existing scene terrain; procedural terrain generation skipped.");
+            }
+            else
+            {
+                GameObject worldSystem = new GameObject("DREGFALL_FixedWorldSystem");
+                DregfallWorldGenerator world = worldSystem.AddComponent<DregfallWorldGenerator>();
+                world.GenerateWorld();
+                spawn = world.GetRecommendedSpawnPoint();
+            }
 
             GameObject player = new GameObject("DREGFALL_Survivor");
             player.transform.position = spawn + Vector3.up * 3f;
@@ -70,7 +96,7 @@ namespace Dregfall
             if (follow == null) follow = cam.gameObject.AddComponent<DregfallCameraFollow>();
             follow.SetTarget(player.transform);
 
-            Debug.Log("[DREGFALL] Fixed 8x8 km world active. Unlimited generation retired.");
+            Debug.Log("[DREGFALL] Survivor initialized. Existing scene terrain is preferred when available.");
         }
     }
 }
