@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b63f528cf68481040acfddab5e201ddd, type: 3}
+  m_Name: DREGFALL_EnvironmentCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::Dregfall.DregfallEnvironmentCatalog
+  trees:
+  - {fileID: 8185793832496569501, guid: 609df25574ee7404da5687aa8948eb2d, type: 3}
+  - {fileID: 8185793832496569501, guid: 792408f9ce579c64d988399cc6f8d36d, type: 3}
+  - {fileID: 3416579149820165379, guid: 6bada98011d8805438c8a657e6e85c71, type: 3}
+  - {fileID: 3416579149820165379, guid: 1f14f87b5b2ebb44ab13d657de58abbb, type: 3}
+  - {fileID: 1991462268964490261, guid: 2cd7a1950f2cad949b3484396d7ce863, type: 3}
+  grass:
+  - {fileID: 4220957155373518681, guid: 85837e56e91ba6e48b37fc46b26ff632, type: 3}
+  - {fileID: 4126960229627409182, guid: c8aaf1c1cedd4b147a578bff4c43e688, type: 3}
+  - {fileID: 839177154292737458, guid: 94552b83c407ed14e85529b7667e2053, type: 3}
+  - {fileID: 1453329634999331186, guid: 0368d698bb4ee3344b5d86d40d8c3342, type: 3}
+  undergrowth:
+  - {fileID: 2884902762947504256, guid: adf6112ef1404784391ff8ff0b5d19e7, type: 3}
+  - {fileID: 1812118209046313847, guid: beaabbe626c77ab4eb82ee7634a55a62, type: 3}
+  - {fileID: 1902300365323341504, guid: 441c9ed3ac313334f9c9122a3dcda45d, type: 3}
+  - {fileID: 5007786437633731835, guid: 35825a80341b01646b450d07ad62bd43, type: 3}
+  - {fileID: 7369026244538988676, guid: df8354d67fa6cb8408c67b93e6c0bd41, type: 3}
+  - {fileID: 2743844947380288560, guid: 0fefe9f988245b84baf3dd1ba8efbdf8, type: 3}
+  - {fileID: 686109982382172507, guid: d882aab891802ca4591057b3b7f1b017, type: 3}
+  - {fileID: 5943464997499745565, guid: 88ee70e3f0d58e543b0b2cdd3494f868, type: 3}
+  rocks:
+  - {fileID: 2881479668610909691, guid: c67ed6360e72a9848a4bc876f41e5c51, type: 3}
+  - {fileID: 7833923683500900003, guid: 11ef6c955fb624a4aaf3b18597db22df, type: 3}
+  - {fileID: 1844511393940878295, guid: a5344b98eb8749b48bd7eff8a8c3adae, type: 3}
+  - {fileID: 1654020625963138219, guid: 32a25aaeb263423438ea72cc904f7910, type: 3}
